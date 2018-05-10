@@ -1,6 +1,7 @@
 #include "hw.h"
 #include "debug.h"
 #include "nrf_delay.h"
+#include "nrf_gpio.h"
 
 #define WAIT_TIME 3 /* seconds */
 
@@ -8,6 +9,10 @@
 #define MAX_APPLICATION_SIZE 0x4D00 /* approx 19k */
 
 uint8_t application_buffer[MAX_APPLICATION_SIZE]; /* we're just gonna allocate this one up front */
+
+/* Forward Declarations */
+bool check_enter_bootloader();
+void launch_application();
 
 ///
 /// Entry point

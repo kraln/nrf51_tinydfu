@@ -82,6 +82,9 @@ static void __INLINE nrf_delay_us(uint32_t volatile number_of_us)
 
 #endif
 
-void nrf_delay_ms(uint32_t volatile number_of_ms);
+__STATIC_INLINE void nrf_delay_ms(uint32_t number_of_ms)
+{
+      nrf_delay_us(1000*number_of_ms);
+}
 
 #endif
