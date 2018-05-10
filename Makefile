@@ -8,6 +8,7 @@
 NAME = nrf51_tinydfu
 TARGET := NRF51
 SHELL = /bin/bash
+SDK_ROOT = ../../../../mnt/d/nrfsdk12/nRF5_SDK_12.3.0_d7731ad
 
 # Debugging stuff
 TERMINAL ?= xterm -e
@@ -24,15 +25,79 @@ TARGET_TRIPLE := arm-none-eabi
 # Build Directory
 BUILD := build
 
-SOURCES = \
+SOURCES := \
 	source \
-	linker
+	linker 
 
 INCLUDES := \
 	source \
 	linker \
 	include \
 	include/gcc 
+
+# NRF Includes (prune me)
+INCLUDES += \
+  $(SDK_ROOT)/components/drivers_nrf/comp \
+  $(SDK_ROOT)/components/ble/ble_services/ble_ancs_c \
+  $(SDK_ROOT)/components/ble/ble_services/ble_ias_c \
+  $(SDK_ROOT)/components/softdevice/s130/headers \
+  $(SDK_ROOT)/components/ble/ble_services/ble_gls \
+  $(SDK_ROOT)/components/libraries/gpiote \
+  $(SDK_ROOT)/components/drivers_nrf/gpiote \
+  $(SDK_ROOT)/components/drivers_nrf/common \
+  $(SDK_ROOT)/components/ble/ble_advertising \
+  $(SDK_ROOT)/components/softdevice/s130/headers/nrf51 \
+  $(SDK_ROOT)/components/ble/ble_services/ble_bas_c \
+  $(SDK_ROOT)/components/ble/ble_services/ble_hrs_c \
+  $(SDK_ROOT)/components/ble/ble_dtm \
+  $(SDK_ROOT)/components/toolchain/cmsis/include \
+  $(SDK_ROOT)/components/ble/ble_services/ble_rscs_c \
+  $(SDK_ROOT)/components/ble/common \
+  $(SDK_ROOT)/components/ble/ble_services/ble_lls \
+  $(SDK_ROOT)/components/drivers_nrf/wdt \
+  $(SDK_ROOT)/components/ble/ble_services/ble_bas \
+  $(SDK_ROOT)/components/libraries/experimental_section_vars \
+  $(SDK_ROOT)/components/ble/ble_services/ble_ans_c \
+  $(SDK_ROOT)/components/libraries/slip \
+  $(SDK_ROOT)/components/libraries/mem_manager \
+  $(SDK_ROOT)/components/libraries/csense_drv \
+  $(SDK_ROOT)/components/drivers_nrf/hal \
+  $(SDK_ROOT)/components/ble/ble_services/ble_nus_c \
+  $(SDK_ROOT)/components/drivers_nrf/rtc \
+  $(SDK_ROOT)/components/ble/ble_services/ble_ias \
+  $(SDK_ROOT)/components/drivers_nrf/ppi \
+  $(SDK_ROOT)/components/ble/ble_services/ble_dfu \
+  $(SDK_ROOT)/components \
+  $(SDK_ROOT)/components/libraries/scheduler \
+  $(SDK_ROOT)/components/ble/ble_services/ble_lbs \
+  $(SDK_ROOT)/components/ble/ble_services/ble_hts \
+  $(SDK_ROOT)/components/drivers_nrf/delay \
+  $(SDK_ROOT)/components/drivers_nrf/timer \
+  $(SDK_ROOT)/components/libraries/util \
+  $(SDK_ROOT)/components/libraries/usbd/class/cdc \
+  $(SDK_ROOT)/components/ble/ble_services/ble_cscs \
+  $(SDK_ROOT)/components/drivers_nrf/lpcomp \
+  $(SDK_ROOT)/components/libraries/timer \
+  $(SDK_ROOT)/components/drivers_nrf/power \
+  $(SDK_ROOT)/components/libraries/usbd/config \
+  $(SDK_ROOT)/components/toolchain \
+  $(SDK_ROOT)/components/libraries/led_softblink \
+  $(SDK_ROOT)/components/ble/ble_services/ble_cts_c \
+  $(SDK_ROOT)/components/ble/ble_services/ble_nus \
+  $(SDK_ROOT)/components/ble/ble_services/ble_hids \
+  $(SDK_ROOT)/components/ble/peer_manager \
+  $(SDK_ROOT)/components/ble/ble_services/ble_tps \
+  $(SDK_ROOT)/components/ble/ble_services/ble_dis \
+  $(SDK_ROOT)/components/device \
+  $(SDK_ROOT)/components/ble/nrf_ble_qwr \
+  $(SDK_ROOT)/components/ble/ble_services/ble_lbs_c \
+  $(SDK_ROOT)/components/ble/ble_racp \
+  $(SDK_ROOT)/components/toolchain/gcc \
+  $(SDK_ROOT)/components/ble/ble_services/ble_rscs \
+  $(SDK_ROOT)/components/softdevice/common/softdevice_handler \
+  $(SDK_ROOT)/components/softdevice/s130/headers 
+
+
 
 LIBRARIES :=
 LD_SCRIPT := gcc_nrf51_bootloader.ld
@@ -41,16 +106,10 @@ LD_SCRIPT := gcc_nrf51_bootloader.ld
 # Compiler prefix and location
 ##########################################################################
 CCACHE = ccache
-HOST_AS = $(CCACHE) $(HOST_COMPILE)gcc
-HOST_CC = $(CCACHE) $(HOST_COMPILE)gcc
-HOST_LD = $(CCACHE) $(HOST_COMPILE)gcc
-HOST_SIZE = $(HOST_COMPILE)size
-HOST_OBJCOPY = $(HOST_COMPILE)objcopy
-HOST_OBJDUMP = $(HOST_COMPILE)objdump
 
 TARGET_PREFIX = $(TARGET_TRIPLE)-
 TARGET_AS = $(CCACHE) $(TARGET_PREFIX)gcc
-TARGET_CC = $(CCACHE) $(TARGET_PREFIX)gcc
+TARGET_CC = $(CCACHE) $(TARGET_PREFIX)gcc 
 TARGET_GDB = $(TARGET_PREFIX)gdb
 TARGET_LD = $(CCACHE) $(TARGET_PREFIX)gcc
 TARGET_SIZE = $(TARGET_PREFIX)size
@@ -76,29 +135,14 @@ endif
 COMMON_FLAGS := -g -c -Wall -Werror -ffunction-sections -fdata-sections \
 	-fmessage-length=0 -std=gnu99 \
 	-DTARGET=$(TARGET) -D$(TARGET) \
+	-DS130 -DBLE_STACK_SUPPORT_REQD -DNRF_SD_BLE_API_VERSION=2 -DSOFTDEVICE_PRESENT \
 	-DPROGRAM_VERSION=\"$(PROGRAM_VERSION)\" \
 #	-DSEMIHOSTED \
 
 COMMON_ASFLAGS := -D__ASSEMBLY__ -x assembler-with-cpp
 
-HOST_FLAGS := $(COMMON_FLAGS) $(INCLUDE) -DUSE_NATIVE_STDLIB=1
-CLANG_FLAGS := -fcolor-diagnostics -Qunused-arguments
-ifneq (,$(findstring clang,$(HOST_CC)))
-	HOST_FLAGS += $(CLANG_FLAGS)
-endif
-
-# On MinGW hosts, we have to define this to get %z for printf.
-ifneq (,$(findstring windows32,$(UNAME)))
-	HOST_FLAGS += -D__USE_MINGW_ANSI_STDIO=1
-endif
-
-HOST_CFLAGS := $(HOST_FLAGS) -O0 --coverage 
-HOST_ASFLAGS := $(HOST_FLAGS) $(COMMON_ASFLAGS)
-HOST_LDFLAGS := --coverage
-HOST_LDLIBS  = -lm -pthread -lrt 
-
 TARGET_ARCHFLAGS := -march=armv6-m -mthumb -mcpu=cortex-m0
-TARGET_FLAGS := $(COMMON_FLAGS) -O2 -fmerge-constants $(TARGET_ARCHFLAGS) $(INCLUDE)
+TARGET_FLAGS := $(COMMON_FLAGS) -Os -g3 -fmerge-constants $(TARGET_ARCHFLAGS) $(INCLUDE)
 TARGET_CFLAGS := $(TARGET_FLAGS)
 TARGET_ASFLAGS := $(TARGET_FLAGS) $(COMMON_ASFLAGS)
 
@@ -116,6 +160,11 @@ export VPATH := $(foreach dir,$(SOURCES),$(CURDIR)/$(dir))
 export DEPSDIR := $(CURDIR)/$(BUILD)
 
 CFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
+CFILES += \
+  $(SDK_ROOT)/components/ble/common/ble_conn_params.c \
+	$(SDK_ROOT)/components/softdevice/common/softdevice_handler/softdevice_handler.c \
+  $(SDK_ROOT)/components/ble/ble_services/ble_nus/ble_nus.c
+
 SFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
 HFILES := $(foreach dir,$(INCLUDES),$(notdir $(wildcard $(dir)/*.h)))
 export LIBFILES := $(addprefix $(CURDIR)/,$(foreach dir,$(LIBRARIES),$(wildcard $(dir)/*.a)))
@@ -195,17 +244,24 @@ $(OUTPUTDIR)/tags: $(CFILES) $(HFILES)
 		$(OUTPUTDIR)/include \
 		$(OUTPUTDIR)/Makefile
 
+###
+### Softdevice Uglyness
+###
+$(SDK_ROOT)/components/ble/common/ble_conn_params.o : $(SDK_ROOT)/components/ble/common/ble_conn_params.c 
+	@echo $(@F)
+	@$(TARGET_CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(TARGET_CFLAGS) -o $@ $<
+
+$(SDK_ROOT)/components/softdevice/common/softdevice_handler/softdevice_handler.o : $(SDK_ROOT)/components/softdevice/common/softdevice_handler/softdevice_handler.c
+	@echo $(@F)
+	@$(TARGET_CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(TARGET_CFLAGS) -o $@ $<
+
+$(SDK_ROOT)/components/ble/ble_services/ble_nus/ble_nus.o : $(SDK_ROOT)/components/ble/ble_services/ble_nus/ble_nus.c
+	@echo $(@F)
+	@$(TARGET_CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(TARGET_CFLAGS) -o $@ $<
+
 ##########################################################################
 # General Build Rules
 ##########################################################################
-%.host.o : %.c
-	@echo $(@F)
-	@$(HOST_CC) -MMD -MP -MF $(DEPSDIR)/$*.host.d $(HOST_CFLAGS) -o $@ $<
-
-%.host.o : %.s
-	@echo $(@F)
-	@$(HOST_AS) -MMD -MP -MF $(DEPSDIR)/$*.host.d $(HOST_ASFLAGS) -o $@ $<
-
 %.o : %.c
 	@echo $(@F)
 	@$(TARGET_CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(TARGET_CFLAGS) -o $@ $<
