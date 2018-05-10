@@ -1,5 +1,6 @@
-_build
-.hex
-.elf
-.bin
+tags
+*build/*
+*.hex
+*.elf
+*.bin
 *.swp
