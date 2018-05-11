@@ -16,6 +16,10 @@
 #ifndef NORDIC_COMMON_H__
 #define NORDIC_COMMON_H__
 
+//lint -e491 // Suppress warning 491 "non-standard use of 'defined' preprocessor operator"
+#define NRF_MODULE_ENABLED(module)\
+  ((defined(module ## ENABLED) && (module ## ENABLED)) ? 1 : 0)
+
 /** Swaps the upper byte with the lower byte in a 16 bit variable */
 //lint -emacro((572),SWAP) // Suppress warning 572 "Excessive shift value"
 #define SWAP(x) ((((x)&0xFF)<<8)|(((x)>>8)&0xFF))

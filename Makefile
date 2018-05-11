@@ -8,7 +8,9 @@
 NAME = nrf51_tinydfu
 TARGET := NRF51
 SHELL = /bin/bash
+SDK_ROOT_ABS = /mnt/d/nrfsdk12/nRF5_SDK_12.3.0_d7731ad
 SDK_ROOT = ../../../../mnt/d/nrfsdk12/nRF5_SDK_12.3.0_d7731ad
+SDK_ROOT_BUILD = ../../../../../mnt/d/nrfsdk12/nRF5_SDK_12.3.0_d7731ad
 
 # Debugging stuff
 TERMINAL ?= xterm -e
@@ -96,6 +98,8 @@ INCLUDES += \
   $(SDK_ROOT)/components/ble/ble_services/ble_rscs \
   $(SDK_ROOT)/components/softdevice/common/softdevice_handler \
   $(SDK_ROOT)/components/softdevice/s130/headers 
+#  $(SDK_ROOT)/components/libraries/log \
+#  $(SDK_ROOT)/components/libraries/log/src \
 
 
 
@@ -133,7 +137,7 @@ endif
 ##########################################################################
 
 COMMON_FLAGS := -g -c -Wall -Werror -ffunction-sections -fdata-sections \
-	-fmessage-length=0 -std=gnu99 \
+	-fmessage-length=0 -std=gnu11 \
 	-DTARGET=$(TARGET) -D$(TARGET) \
 	-DS130 -DBLE_STACK_SUPPORT_REQD -DNRF_SD_BLE_API_VERSION=2 -DSOFTDEVICE_PRESENT \
 	-DPROGRAM_VERSION=\"$(PROGRAM_VERSION)\" \
@@ -161,9 +165,9 @@ export DEPSDIR := $(CURDIR)/$(BUILD)
 
 CFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
 CFILES += \
-  $(SDK_ROOT)/components/ble/common/ble_conn_params.c \
-	$(SDK_ROOT)/components/softdevice/common/softdevice_handler/softdevice_handler.c \
-  $(SDK_ROOT)/components/ble/ble_services/ble_nus/ble_nus.c
+  $(SDK_ROOT_BUILD)/components/ble/common/ble_conn_params.c \
+	$(SDK_ROOT_BUILD)/components/softdevice/common/softdevice_handler/softdevice_handler.c \
+  $(SDK_ROOT_BUILD)/components/ble/ble_services/ble_nus/ble_nus.c
 
 SFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
 HFILES := $(foreach dir,$(INCLUDES),$(notdir $(wildcard $(dir)/*.h)))
@@ -247,15 +251,15 @@ $(OUTPUTDIR)/tags: $(CFILES) $(HFILES)
 ###
 ### Softdevice Uglyness
 ###
-$(SDK_ROOT)/components/ble/common/ble_conn_params.o : $(SDK_ROOT)/components/ble/common/ble_conn_params.c 
+$(SDK_ROOT_BUILD)/components/ble/common/ble_conn_params.o : $(SDK_ROOT_BUILD)/components/ble/common/ble_conn_params.c 
 	@echo $(@F)
 	@$(TARGET_CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(TARGET_CFLAGS) -o $@ $<
 
-$(SDK_ROOT)/components/softdevice/common/softdevice_handler/softdevice_handler.o : $(SDK_ROOT)/components/softdevice/common/softdevice_handler/softdevice_handler.c
+$(SDK_ROOT_BUILD)/components/softdevice/common/softdevice_handler/softdevice_handler.o : $(SDK_ROOT_BUILD)/components/softdevice/common/softdevice_handler/softdevice_handler.c
 	@echo $(@F)
 	@$(TARGET_CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(TARGET_CFLAGS) -o $@ $<
 
-$(SDK_ROOT)/components/ble/ble_services/ble_nus/ble_nus.o : $(SDK_ROOT)/components/ble/ble_services/ble_nus/ble_nus.c
+$(SDK_ROOT_BUILD)/components/ble/ble_services/ble_nus/ble_nus.o : $(SDK_ROOT_BUILD)/components/ble/ble_services/ble_nus/ble_nus.c
 	@echo $(@F)
 	@$(TARGET_CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(TARGET_CFLAGS) -o $@ $<
 

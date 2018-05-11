@@ -1075,7 +1075,7 @@ typedef struct {                                    /*!< FICR Structure         
   __I  uint32_t  PPFC;                              /*!< Pre-programmed factory code present.                                  */
   __I  uint32_t  RESERVED2;
   __I  uint32_t  NUMRAMBLOCK;                       /*!< Number of individualy controllable RAM blocks.                        */
-  __I  uint32_t  SIZERAMBLOCK[4];                   /*!< Size of RAM block in bytes.                                           */
+  __I  uint32_t  SIZERAMBLOCKS;                     /*!< Size of RAM block in bytes.                                           */
   __I  uint32_t  RESERVED3[5];
   __I  uint32_t  CONFIGID;                          /*!< Configuration identifier.                                             */
   __I  uint32_t  DEVICEID[2];                       /*!< Device identifier.                                                    */
