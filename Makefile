@@ -6,9 +6,8 @@
 # User configuration and firmware specific object files
 ##########################################################################
 NAME = nrf51_tinydfu
-TARGET := NRF51
 SHELL = /bin/bash
-SDK_ROOT = ../../nrfSDK/nRF5_SDK_12.3.0_d7731ad
+SDK_ROOT = ../../../../mnt/d/nrfsdk12/nRF5_SDK_12.3.0_d7731ad
 
 # Debugging stuff
 TERMINAL ?= xterm -e
@@ -37,54 +36,53 @@ INCLUDES := \
 
 # Softdevice / nRF SDK includes
 INCLUDES += \
-  $(SDK_ROOT)/components/drivers_nrf/comp \
-  $(SDK_ROOT)/components/ble/ble_services/ble_ancs_c \
-  $(SDK_ROOT)/components/ble/ble_services/ble_ias_c \
-  $(SDK_ROOT)/components/softdevice/s130/headers \
-  $(SDK_ROOT)/components/ble/ble_services/ble_gls \
-  $(SDK_ROOT)/components/drivers_nrf/common \
-  $(SDK_ROOT)/components/ble/ble_advertising \
+	$(SDK_ROOT)/components \
+  $(SDK_ROOT)/components/toolchain \
+  $(SDK_ROOT)/components/toolchain/gcc \
+  $(SDK_ROOT)/components/toolchain/cmsis/include \
+  $(SDK_ROOT)/components/device \
+	$(SDK_ROOT)/components/softdevice/s130/headers \
   $(SDK_ROOT)/components/softdevice/s130/headers/nrf51 \
+  $(SDK_ROOT)/components/softdevice/common/softdevice_handler \
+  $(SDK_ROOT)/components/ble/common \
+	$(SDK_ROOT)/components/ble/nrf_ble_qwr \
+  $(SDK_ROOT)/components/ble/ble_racp \
+	$(SDK_ROOT)/components/ble/ble_advertising \
+  $(SDK_ROOT)/components/ble/ble_dtm \
+  $(SDK_ROOT)/components/ble/peer_manager \
   $(SDK_ROOT)/components/ble/ble_services/ble_bas_c \
   $(SDK_ROOT)/components/ble/ble_services/ble_hrs_c \
-  $(SDK_ROOT)/components/ble/ble_dtm \
-  $(SDK_ROOT)/components/toolchain/cmsis/include \
+  $(SDK_ROOT)/components/ble/ble_services/ble_ancs_c \
+  $(SDK_ROOT)/components/ble/ble_services/ble_ias_c \
+  $(SDK_ROOT)/components/ble/ble_services/ble_gls \
+	$(SDK_ROOT)/components/ble/ble_services/ble_lbs_c \
   $(SDK_ROOT)/components/ble/ble_services/ble_rscs_c \
-  $(SDK_ROOT)/components/ble/common \
   $(SDK_ROOT)/components/ble/ble_services/ble_lls \
   $(SDK_ROOT)/components/ble/ble_services/ble_bas \
-  $(SDK_ROOT)/components/libraries/experimental_section_vars \
   $(SDK_ROOT)/components/ble/ble_services/ble_ans_c \
-  $(SDK_ROOT)/components/drivers_nrf/hal \
   $(SDK_ROOT)/components/ble/ble_services/ble_nus_c \
   $(SDK_ROOT)/components/ble/ble_services/ble_ias \
   $(SDK_ROOT)/components/ble/ble_services/ble_dfu \
-  $(SDK_ROOT)/components \
-  $(SDK_ROOT)/components/libraries/scheduler \
   $(SDK_ROOT)/components/ble/ble_services/ble_lbs \
   $(SDK_ROOT)/components/ble/ble_services/ble_hts \
-  $(SDK_ROOT)/components/drivers_nrf/delay \
-  $(SDK_ROOT)/components/drivers_nrf/timer \
-  $(SDK_ROOT)/components/libraries/util \
   $(SDK_ROOT)/components/ble/ble_services/ble_cscs \
-  $(SDK_ROOT)/components/libraries/timer \
-  $(SDK_ROOT)/components/drivers_nrf/power \
-  $(SDK_ROOT)/components/toolchain \
   $(SDK_ROOT)/components/ble/ble_services/ble_cts_c \
   $(SDK_ROOT)/components/ble/ble_services/ble_nus \
   $(SDK_ROOT)/components/ble/ble_services/ble_hids \
-  $(SDK_ROOT)/components/ble/peer_manager \
   $(SDK_ROOT)/components/ble/ble_services/ble_tps \
   $(SDK_ROOT)/components/ble/ble_services/ble_dis \
-  $(SDK_ROOT)/components/device \
-  $(SDK_ROOT)/components/ble/nrf_ble_qwr \
-  $(SDK_ROOT)/components/ble/ble_services/ble_lbs_c \
-  $(SDK_ROOT)/components/ble/ble_racp \
-  $(SDK_ROOT)/components/toolchain/gcc \
-  $(SDK_ROOT)/components/libraries/fstorage \
   $(SDK_ROOT)/components/ble/ble_services/ble_rscs \
-  $(SDK_ROOT)/components/softdevice/common/softdevice_handler \
-  $(SDK_ROOT)/components/softdevice/s130/headers 
+ 	$(SDK_ROOT)/components/drivers_nrf/comp \
+  $(SDK_ROOT)/components/drivers_nrf/hal \
+  $(SDK_ROOT)/components/drivers_nrf/common \
+  $(SDK_ROOT)/components/drivers_nrf/delay \
+  $(SDK_ROOT)/components/drivers_nrf/timer \
+  $(SDK_ROOT)/components/drivers_nrf/power \
+  $(SDK_ROOT)/components/libraries/fstorage \
+  $(SDK_ROOT)/components/libraries/util \
+  $(SDK_ROOT)/components/libraries/experimental_section_vars \
+  $(SDK_ROOT)/components/libraries/timer \
+  $(SDK_ROOT)/components/libraries/scheduler \
 
 LIBRARIES :=
 LD_SCRIPT := gcc_nrf51_bootloader.ld
@@ -119,17 +117,17 @@ endif
 # Compiler settings
 ##########################################################################
 
-COMMON_FLAGS := -g -c -Wall -Werror -ffunction-sections -fdata-sections \
+COMMON_FLAGS := -g -c -Wall -Werror -ffunction-sections -fdata-sections -fno-strict-aliasing \
 	-fmessage-length=0 -std=gnu11 \
-	-DTARGET=$(TARGET) -D$(TARGET) \
-	-DS130 -DBLE_STACK_SUPPORT_REQD -DNRF_SD_BLE_API_VERSION=2 -DSOFTDEVICE_PRESENT \
+	-DTARGET=NRF51 -DNRF51 \
+	-DS130 -DBLE_STACK_SUPPORT_REQD -DNRF_SD_BLE_API_VERSION=2 -DSOFTDEVICE_PRESENT --short-enums -fno-builtin\
 	-DPROGRAM_VERSION=\"$(PROGRAM_VERSION)\" \
-#	-DSEMIHOSTED \
+	-DSEMIHOSTED 
 
 COMMON_ASFLAGS := -D__ASSEMBLY__ -x assembler-with-cpp
 
-TARGET_ARCHFLAGS := -march=armv6-m -mthumb -mcpu=cortex-m0
-TARGET_FLAGS := $(COMMON_FLAGS) -Os -g3 -fmerge-constants $(TARGET_ARCHFLAGS) $(INCLUDE)
+TARGET_ARCHFLAGS := -march=armv6-m -mthumb -mcpu=cortex-m0 -mfloat-abi=soft 
+TARGET_FLAGS := $(COMMON_FLAGS) -O1 -g -fmerge-constants $(TARGET_ARCHFLAGS) $(INCLUDE)
 TARGET_CFLAGS := $(TARGET_FLAGS)
 TARGET_ASFLAGS := $(TARGET_FLAGS) $(COMMON_ASFLAGS)
 
@@ -148,14 +146,14 @@ export DEPSDIR := $(CURDIR)/$(BUILD)
 
 CFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
 CFILES += \
-  ../$(SDK_ROOT)/components/ble/common/ble_conn_params.c \
-  ../$(SDK_ROOT)/components/ble/common/ble_advdata.c \
   ../$(SDK_ROOT)/components/softdevice/common/softdevice_handler/softdevice_handler.c \
-  ../$(SDK_ROOT)/components/ble/ble_services/ble_nus/ble_nus.c \
   ../$(SDK_ROOT)/components/libraries/timer/app_timer.c \
   ../$(SDK_ROOT)/components/libraries/util/app_util_platform.c \
   ../$(SDK_ROOT)/components/libraries/fstorage/fstorage.c \
+  ../$(SDK_ROOT)/components/ble/common/ble_conn_params.c \
+  ../$(SDK_ROOT)/components/ble/common/ble_advdata.c \
   ../$(SDK_ROOT)/components/ble/common/ble_srv_common.c \
+  ../$(SDK_ROOT)/components/ble/ble_services/ble_nus/ble_nus.c \
   ../$(SDK_ROOT)/components/ble/ble_advertising/ble_advertising.c
 
 SFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
@@ -276,8 +274,6 @@ $(OUTPUTDIR)/tags: $(CFILES) $(HFILES)
 ../$(SDK_ROOT)/components/libraries/fstorage/fstorage.o : ../$(SDK_ROOT)/components/libraries/fstorage/fstorage.c
 	@echo $(@F)
 	@$(TARGET_CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(TARGET_CFLAGS) -o $@ $<
-
-
 
 #########################################################################
 # General Build Rules

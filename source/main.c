@@ -38,17 +38,18 @@ int main(void)
 
   if (!check_enter_bootloader())
   {
+    _debug_printf("launching application");
     launch_application();  
   }
 
   /* if we got here, we're supposed to do bootloader things */
-  
+  _debug_printf("entering bootloader");
   /* If bootloader: */
   /* init the (yuck) softdevice */
   sd_init();
 
   /* begin advertising */
-  
+  _debug_printf("entering powersave loop");
   for(;;);
 }
 
@@ -58,7 +59,14 @@ int main(void)
 ///
 bool check_enter_bootloader()
 {  
+  return true; // XXX editing debugger for now
+
   bool should_enter = false;
+
+
+  // TODO: Fast path--check if there is an application. if not, true fast
+
+
   uint32_t accumulated_ms = 0;
 
   /* Example: set up GPIO directions */
@@ -117,7 +125,7 @@ void sd_dispatch(ble_evt_t* p_ble_evt)
 
 void sd_init()
 {
-
+  uint32_t error;
   /* Define a clock source and hand it to the soft device (in your board) */
   nrf_clock_lf_cfg_t clock_lf_cfg =                    \
   {.source        = NRF_CLOCK_LF_SRC_RC,               \
@@ -126,11 +134,19 @@ void sd_init()
    .xtal_accuracy = NRF_CLOCK_LF_XTAL_ACCURACY_250_PPM
   }
   ;
-  SOFTDEVICE_HANDLER_INIT(&clock_lf_cfg, NULL);
+  
+  _debug_printf("size of buffer for softdevice: 0x%x bytes", BLE_STACK_EVT_MSG_BUF_SIZE);
+
+  /* expanded from a macro */
+  static uint32_t BLE_EVT_BUFFER[CEIL_DIV(BLE_STACK_EVT_MSG_BUF_SIZE, sizeof(uint32_t))];
+  error = softdevice_handler_init(&clock_lf_cfg, BLE_EVT_BUFFER, sizeof(BLE_EVT_BUFFER), NULL);
+  check_error(error);
+
+  _debug_printf("ing");
 
   /* Ask for just one peripheral connection */
   ble_enable_params_t ble_enable_params;
-  uint32_t error = softdevice_enable_get_default_config(0,1,&ble_enable_params);
+  error = softdevice_enable_get_default_config(0,1,&ble_enable_params);
   check_error(error);
 
   /* Set the MTU size and enable the softdevice */
@@ -149,7 +165,15 @@ void check_error(uint32_t error)
     _debug_printf("Encountered an error (%d), jumping out of bootloader", error);
     launch_application();
   }
+  _debug_printf("Check: No error (%d)", error);
+  
 }
+
+void app_error_handler(uint32_t error, uint32_t x, const uint8_t* y)
+{
+  check_error(error);
+}
+
 void app_error_handler_bare(uint32_t error)
 {
   check_error(error);

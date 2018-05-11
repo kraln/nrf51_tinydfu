@@ -32,6 +32,7 @@ void wait_for_val_ne(volatile uint32_t *value)
   else
   {
     /* Reboot */
+    _debug_printf("timed out");
     NVIC_SystemReset();
   }
 }

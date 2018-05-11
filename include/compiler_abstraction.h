@@ -49,7 +49,6 @@
     #ifndef __INLINE
         #define __INLINE         inline                                 /*!< inline keyword for GNU Compiler               */
     #endif
-
     #define GET_SP()         gcc_current_sp()                           /*!> read current SP function for GNU Compiler     */
 
     static inline unsigned int gcc_current_sp(void)
