@@ -150,6 +150,7 @@ CFILES += \
   ../$(SDK_ROOT)/components/libraries/timer/app_timer.c \
   ../$(SDK_ROOT)/components/libraries/util/app_util_platform.c \
   ../$(SDK_ROOT)/components/libraries/fstorage/fstorage.c \
+  ../$(SDK_ROOT)/components/libraries/svc/nrf_svc_handler.c \
   ../$(SDK_ROOT)/components/ble/common/ble_conn_params.c \
   ../$(SDK_ROOT)/components/ble/common/ble_advdata.c \
   ../$(SDK_ROOT)/components/ble/common/ble_srv_common.c \
@@ -274,6 +275,12 @@ $(OUTPUTDIR)/tags: $(CFILES) $(HFILES)
 ../$(SDK_ROOT)/components/libraries/fstorage/fstorage.o : ../$(SDK_ROOT)/components/libraries/fstorage/fstorage.c
 	@echo $(@F)
 	@$(TARGET_CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(TARGET_CFLAGS) -o $@ $<
+
+../$(SDK_ROOT)/components/libraries/svc/nrf_svc_handler.o : ../$(SDK_ROOT)/components/libraries/svc/nrf_svc_handler.c
+	@echo $(@F)
+	@$(TARGET_CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(TARGET_CFLAGS) -o $@ $<
+
+
 
 #########################################################################
 # General Build Rules
