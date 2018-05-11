@@ -35,15 +35,13 @@ INCLUDES := \
 	include \
 	include/gcc 
 
-# NRF Includes (prune me)
+# Softdevice / nRF SDK includes
 INCLUDES += \
   $(SDK_ROOT)/components/drivers_nrf/comp \
   $(SDK_ROOT)/components/ble/ble_services/ble_ancs_c \
   $(SDK_ROOT)/components/ble/ble_services/ble_ias_c \
   $(SDK_ROOT)/components/softdevice/s130/headers \
   $(SDK_ROOT)/components/ble/ble_services/ble_gls \
-  $(SDK_ROOT)/components/libraries/gpiote \
-  $(SDK_ROOT)/components/drivers_nrf/gpiote \
   $(SDK_ROOT)/components/drivers_nrf/common \
   $(SDK_ROOT)/components/ble/ble_advertising \
   $(SDK_ROOT)/components/softdevice/s130/headers/nrf51 \
@@ -54,18 +52,12 @@ INCLUDES += \
   $(SDK_ROOT)/components/ble/ble_services/ble_rscs_c \
   $(SDK_ROOT)/components/ble/common \
   $(SDK_ROOT)/components/ble/ble_services/ble_lls \
-  $(SDK_ROOT)/components/drivers_nrf/wdt \
   $(SDK_ROOT)/components/ble/ble_services/ble_bas \
   $(SDK_ROOT)/components/libraries/experimental_section_vars \
   $(SDK_ROOT)/components/ble/ble_services/ble_ans_c \
-  $(SDK_ROOT)/components/libraries/slip \
-  $(SDK_ROOT)/components/libraries/mem_manager \
-  $(SDK_ROOT)/components/libraries/csense_drv \
   $(SDK_ROOT)/components/drivers_nrf/hal \
   $(SDK_ROOT)/components/ble/ble_services/ble_nus_c \
-  $(SDK_ROOT)/components/drivers_nrf/rtc \
   $(SDK_ROOT)/components/ble/ble_services/ble_ias \
-  $(SDK_ROOT)/components/drivers_nrf/ppi \
   $(SDK_ROOT)/components/ble/ble_services/ble_dfu \
   $(SDK_ROOT)/components \
   $(SDK_ROOT)/components/libraries/scheduler \
@@ -74,14 +66,10 @@ INCLUDES += \
   $(SDK_ROOT)/components/drivers_nrf/delay \
   $(SDK_ROOT)/components/drivers_nrf/timer \
   $(SDK_ROOT)/components/libraries/util \
-  $(SDK_ROOT)/components/libraries/usbd/class/cdc \
   $(SDK_ROOT)/components/ble/ble_services/ble_cscs \
-  $(SDK_ROOT)/components/drivers_nrf/lpcomp \
   $(SDK_ROOT)/components/libraries/timer \
   $(SDK_ROOT)/components/drivers_nrf/power \
-  $(SDK_ROOT)/components/libraries/usbd/config \
   $(SDK_ROOT)/components/toolchain \
-  $(SDK_ROOT)/components/libraries/led_softblink \
   $(SDK_ROOT)/components/ble/ble_services/ble_cts_c \
   $(SDK_ROOT)/components/ble/ble_services/ble_nus \
   $(SDK_ROOT)/components/ble/ble_services/ble_hids \
@@ -93,13 +81,10 @@ INCLUDES += \
   $(SDK_ROOT)/components/ble/ble_services/ble_lbs_c \
   $(SDK_ROOT)/components/ble/ble_racp \
   $(SDK_ROOT)/components/toolchain/gcc \
+  $(SDK_ROOT)/components/libraries/fstorage \
   $(SDK_ROOT)/components/ble/ble_services/ble_rscs \
   $(SDK_ROOT)/components/softdevice/common/softdevice_handler \
   $(SDK_ROOT)/components/softdevice/s130/headers 
-#  $(SDK_ROOT)/components/libraries/log \
-#  $(SDK_ROOT)/components/libraries/log/src \
-
-
 
 LIBRARIES :=
 LD_SCRIPT := gcc_nrf51_bootloader.ld
@@ -164,8 +149,14 @@ export DEPSDIR := $(CURDIR)/$(BUILD)
 CFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
 CFILES += \
   ../$(SDK_ROOT)/components/ble/common/ble_conn_params.c \
+  ../$(SDK_ROOT)/components/ble/common/ble_advdata.c \
   ../$(SDK_ROOT)/components/softdevice/common/softdevice_handler/softdevice_handler.c \
-  ../$(SDK_ROOT)/components/ble/ble_services/ble_nus/ble_nus.c
+  ../$(SDK_ROOT)/components/ble/ble_services/ble_nus/ble_nus.c \
+  ../$(SDK_ROOT)/components/libraries/timer/app_timer.c \
+  ../$(SDK_ROOT)/components/libraries/util/app_util_platform.c \
+  ../$(SDK_ROOT)/components/libraries/fstorage/fstorage.c \
+  ../$(SDK_ROOT)/components/ble/common/ble_srv_common.c \
+  ../$(SDK_ROOT)/components/ble/ble_advertising/ble_advertising.c
 
 SFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
 HFILES := $(foreach dir,$(INCLUDES),$(notdir $(wildcard $(dir)/*.h)))
@@ -248,8 +239,13 @@ $(OUTPUTDIR)/tags: $(CFILES) $(HFILES)
 
 ###
 ### Softdevice Uglyness
+### I try to only include what's absolutely neccessary. Spaghetti SDK.
 ###
 ../$(SDK_ROOT)/components/ble/common/ble_conn_params.o : ../$(SDK_ROOT)/components/ble/common/ble_conn_params.c 
+	@echo $(@F)
+	@$(TARGET_CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(TARGET_CFLAGS) -o $@ $<
+
+../$(SDK_ROOT)/components/ble/common/ble_advdata.o : ../$(SDK_ROOT)/components/ble/common/ble_advdata.c 
 	@echo $(@F)
 	@$(TARGET_CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(TARGET_CFLAGS) -o $@ $<
 
@@ -261,7 +257,29 @@ $(OUTPUTDIR)/tags: $(CFILES) $(HFILES)
 	@echo $(@F)
 	@$(TARGET_CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(TARGET_CFLAGS) -o $@ $<
 
-##########################################################################
+../$(SDK_ROOT)/components/ble/ble_advertising/ble_advertising.o : ../$(SDK_ROOT)/components/ble/ble_advertising/ble_advertising.c
+	@echo $(@F)
+	@$(TARGET_CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(TARGET_CFLAGS) -o $@ $<
+
+../$(SDK_ROOT)/components/libraries/timer/app_timer.o : ../$(SDK_ROOT)/components/libraries/timer/app_timer.c
+	@echo $(@F)
+	@$(TARGET_CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(TARGET_CFLAGS) -o $@ $<
+
+../$(SDK_ROOT)/components/ble/common/ble_srv_common.o : ../$(SDK_ROOT)/components/ble/common/ble_srv_common.c 
+	@echo $(@F)
+	@$(TARGET_CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(TARGET_CFLAGS) -o $@ $<
+
+../$(SDK_ROOT)/components/libraries/util/app_util_platform.o : ../$(SDK_ROOT)/components/libraries/util/app_util_platform.c
+	@echo $(@F)
+	@$(TARGET_CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(TARGET_CFLAGS) -o $@ $<
+
+../$(SDK_ROOT)/components/libraries/fstorage/fstorage.o : ../$(SDK_ROOT)/components/libraries/fstorage/fstorage.c
+	@echo $(@F)
+	@$(TARGET_CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(TARGET_CFLAGS) -o $@ $<
+
+
+
+#########################################################################
 # General Build Rules
 ##########################################################################
 %.o : %.c

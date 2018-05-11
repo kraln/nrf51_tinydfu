@@ -176,57 +176,6 @@ uint32_t hw_ficr_deviceid(size_t index)
   return NRF_FICR->DEVICEID[index];
 }
 
-/*
- * Function for configuring the RTC to generate COMPARE0 event after t mS.
- */
-void hw_rtc_wakeup(uint32_t ms)
-{
-  /* Set prescaler to a TICK of RTC_FREQUENCY. */
-  NRF_RTC1->PRESCALER = COUNTER_PRESCALER;
-
-  /* Compare0 after approximately COMPARE_COUNTERTIME mS */
-  NRF_RTC1->CC[0] = ms;// * RTC_FREQUENCY;
-
-  NRF_RTC1->EVTENSET = RTC_EVTEN_COMPARE0_Msk;
-  NRF_RTC1->INTENSET = RTC_INTENSET_COMPARE0_Msk;
-
-  NRF_RTC1->EVENTS_COMPARE[0] = 0;
-
-  /* Clear the counter */
-  NRF_RTC1->TASKS_CLEAR = 1;
-
-  /* Clear and then enable the RTC IRQ */
-  NVIC_ClearPendingIRQ(RTC1_IRQn);
-  NVIC_EnableIRQ(RTC1_IRQn);
-}
-
-uint32_t hw_rtc_value(void)
-{
-  /* Return the RTC1 value */
-  return NRF_RTC1->COUNTER;
-}
-
-void hw_rtc_start(void)
-{
-  /* Start the RTC */
-  NRF_RTC1->TASKS_START = 1;
-}
-
-void hw_rtc_clear(void)
-{
-  /* Clear the RTC */
-  NRF_RTC1->TASKS_CLEAR = 1;
-  NVIC_ClearPendingIRQ(RTC1_IRQn);
-}
-
-void hw_rtc_stop(void)
-{
-  /* Stop and clear the RTC timer */
-  NRF_RTC1->TASKS_STOP = 1;
-  NRF_RTC1->TASKS_CLEAR = 1;
-  NVIC_ClearPendingIRQ(RTC1_IRQn);
-}
-
 void hw_sleep_power_on(void)
 {
   /* Set the power mode to power on sleeping, retain some RAM */
@@ -250,14 +199,4 @@ void hw_sleep_power_off(void)
   /* Enter system OFF. After wakeup the chip will be reset */
   NRF_POWER->SYSTEMOFF = 1;
   while(1);
-}
-
-void RTC1_IRQHandler(void)
-{
-  /* This handler will be run after wakeup from system ON (RTC wakeup) */
-  if(NRF_RTC1->EVENTS_COMPARE[0])
-  {
-    NRF_RTC1->EVENTS_COMPARE[0] = 0;
-    NRF_RTC1->TASKS_CLEAR = 1;
-  }
 }

@@ -146,7 +146,21 @@ void check_error(uint32_t error)
 {
   if (error != NRF_SUCCESS)
   {
-    _debug_printf("Encountered an error %d initializing the soft device. Bailing.", error);
+    _debug_printf("Encountered an error (%d), jumping out of bootloader", error);
     launch_application();
   }
+}
+void app_error_handler_bare(uint32_t error)
+{
+  check_error(error);
+}
+
+void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info)
+{
+  /* 
+   * id-- identifier
+   * pc-- pc at fault
+   * info-- more info?
+   */
+  check_error(id);
 }

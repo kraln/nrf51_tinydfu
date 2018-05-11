@@ -1108,7 +1108,12 @@ typedef struct {                                    /*!< UICR Structure         
   __IO uint32_t  XTALFREQ;                          /*!< Reset value for CLOCK XTALFREQ register.                              */
   __I  uint32_t  RESERVED0;
   __I  uint32_t  FWID;                              /*!< Firmware ID.                                                          */
-  __IO uint32_t  BOOTLOADERADDR;                    /*!< Bootloader start address.                                             */
+  union {
+    __IO uint32_t NRFFW[15];                        /* Not sure */
+    __IO uint32_t BOOTLOADERADDR;                   /*!< Bootloader start address.                                             */
+  };
+  __IO uint32_t NRFHW[12];                          /* Also not sure */
+  __IO uint32_t CUSTOMER_DEFINED[32];               /* Tuwat */
 } NRF_UICR_Type;
 
 
