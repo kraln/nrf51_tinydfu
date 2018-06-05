@@ -7,7 +7,7 @@
 ##########################################################################
 NAME = nrf51_tinydfu
 SHELL = /bin/bash
-SDK_ROOT = ../../../../mnt/d/nrfsdk12/nRF5_SDK_12.3.0_d7731ad
+SDK_ROOT = ../../../../mnt/d/nrfsdk10
 
 # Debugging stuff
 TERMINAL ?= xterm -e
@@ -16,7 +16,7 @@ JLINKGDB := JLinkGDBServer
 JLINK_OPTIONS = -device nrf51822 -if swd -speed 1000
 
 # Flash start address
-FLASH_START_ADDRESS := 0x0003AC00
+FLASH_START_ADDRESS := 0x0003C000
 
 # Cross-compiler
 TARGET_TRIPLE := arm-none-eabi
@@ -79,9 +79,11 @@ INCLUDES += \
   $(SDK_ROOT)/components/drivers_nrf/delay \
   $(SDK_ROOT)/components/drivers_nrf/timer \
   $(SDK_ROOT)/components/drivers_nrf/power \
+  $(SDK_ROOT)/components/drivers_nrf/pstorage \
   $(SDK_ROOT)/components/libraries/fstorage \
   $(SDK_ROOT)/components/libraries/util \
   $(SDK_ROOT)/components/libraries/timer \
+  $(SDK_ROOT)/components/libraries/trace \
   $(SDK_ROOT)/components/libraries/scheduler \
 
 LIBRARIES :=
@@ -94,7 +96,7 @@ CCACHE = ccache
 
 TARGET_PREFIX = $(TARGET_TRIPLE)-
 TARGET_AS = $(CCACHE) $(TARGET_PREFIX)gcc
-TARGET_CC = $(CCACHE) $(TARGET_PREFIX)gcc 
+TARGET_CC = $(CCACHE) $(TARGET_PREFIX)gcc
 TARGET_GDB = $(TARGET_PREFIX)gdb
 TARGET_LD = $(CCACHE) $(TARGET_PREFIX)gcc
 TARGET_SIZE = $(TARGET_PREFIX)size
@@ -119,10 +121,12 @@ endif
 
 COMMON_FLAGS := -g -c -Wall -Werror -ffunction-sections -fdata-sections -fno-strict-aliasing \
 	-fmessage-length=0 -std=gnu11 \
-	-DTARGET=NRF51 -DNRF51 \
-	-DS130 -DBLE_STACK_SUPPORT_REQD -DNRF_SD_BLE_API_VERSION=2 -DSOFTDEVICE_PRESENT --short-enums -fno-builtin\
+	-DTARGET=NRF51 -DNRF51 -DS110 -DBLE_STACK_SUPPORT_REQD -DNRF_SD_BLE_API_VERSION=2 -DSOFTDEVICE_PRESENT \
+	--short-enums -fno-builtin \
 	-DPROGRAM_VERSION=\"$(PROGRAM_VERSION)\" \
-#	-DSEMIHOSTED 
+	-DSEMIHOSTED \
+	-DNO_VTOR_CONFIG \
+	-DDEBUG
 
 COMMON_ASFLAGS := -D__ASSEMBLY__ -x assembler-with-cpp
 
@@ -147,15 +151,17 @@ export DEPSDIR := $(CURDIR)/$(BUILD)
 CFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
 CFILES += \
   ../$(SDK_ROOT)/components/softdevice/common/softdevice_handler/softdevice_handler.c \
+  ../$(SDK_ROOT)/components/softdevice/common/softdevice_handler/softdevice_handler_appsh.c \
   ../$(SDK_ROOT)/components/libraries/timer/app_timer.c \
   ../$(SDK_ROOT)/components/libraries/util/app_util_platform.c \
   ../$(SDK_ROOT)/components/libraries/fstorage/fstorage.c \
-  ../$(SDK_ROOT)/components/libraries/svc/nrf_svc_handler.c \
   ../$(SDK_ROOT)/components/ble/common/ble_conn_params.c \
   ../$(SDK_ROOT)/components/ble/common/ble_advdata.c \
   ../$(SDK_ROOT)/components/ble/common/ble_srv_common.c \
   ../$(SDK_ROOT)/components/ble/ble_services/ble_nus/ble_nus.c \
-  ../$(SDK_ROOT)/components/ble/ble_advertising/ble_advertising.c
+  ../$(SDK_ROOT)/components/ble/ble_advertising/ble_advertising.c \
+  ../$(SDK_ROOT)/components/libraries/scheduler/app_scheduler.c 
+
 
 SFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
 HFILES := $(foreach dir,$(INCLUDES),$(notdir $(wildcard $(dir)/*.h)))
@@ -252,6 +258,10 @@ $(OUTPUTDIR)/tags: $(CFILES) $(HFILES)
 	@echo $(@F)
 	@$(TARGET_CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(TARGET_CFLAGS) -o $@ $<
 
+../$(SDK_ROOT)/components/softdevice/common/softdevice_handler/softdevice_handler_appsh.o : ../$(SDK_ROOT)/components/softdevice/common/softdevice_handler/softdevice_handler_appsh.c
+	@echo $(@F)
+	@$(TARGET_CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(TARGET_CFLAGS) -o $@ $<
+
 ../$(SDK_ROOT)/components/ble/ble_services/ble_nus/ble_nus.o : ../$(SDK_ROOT)/components/ble/ble_services/ble_nus/ble_nus.c
 	@echo $(@F)
 	@$(TARGET_CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(TARGET_CFLAGS) -o $@ $<
@@ -276,7 +286,7 @@ $(OUTPUTDIR)/tags: $(CFILES) $(HFILES)
 	@echo $(@F)
 	@$(TARGET_CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(TARGET_CFLAGS) -o $@ $<
 
-../$(SDK_ROOT)/components/libraries/svc/nrf_svc_handler.o : ../$(SDK_ROOT)/components/libraries/svc/nrf_svc_handler.c
+../$(SDK_ROOT)/components/libraries/scheduler/app_scheduler.o : ../$(SDK_ROOT)/components/libraries/scheduler/app_scheduler.c
 	@echo $(@F)
 	@$(TARGET_CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(TARGET_CFLAGS) -o $@ $<
 

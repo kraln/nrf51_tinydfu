@@ -2,6 +2,7 @@
 #include "debug.h"
 #include "nrf_delay.h"
 #include "nrf_gpio.h"
+#include "nrf_mbr.h"
 
 /* soft device stuff */
 
@@ -9,12 +10,16 @@
 #include "ble_conn_params.h"
 #include "ble_advertising.h"
 #include "softdevice_handler.h"
+#include "softdevice_handler_appsh.h"
+#include "app_scheduler.h"
 
 #define WAIT_TIME 3 /* seconds */
 
 #define APPLICATION_ENTRY 0x0001B000
+#define BOOTLOADER_REGION_START 0x0003C000
 #define MAX_APPLICATION_SIZE 0x4D00 /* approx 19k */
 
+uint32_t m_uicr_bootloader_start_address __attribute__((section(".uicrBootStartAddress"))) = BOOTLOADER_REGION_START;
 uint8_t application_buffer[MAX_APPLICATION_SIZE]; /* we're just gonna allocate this one up front */
 
 /* Forward Declarations */
@@ -22,14 +27,39 @@ bool check_enter_bootloader();
 void launch_application();
 void sd_init();
 void check_error(uint32_t);
-void sd_dispatch(ble_evt_t*);
+void sd_dispatch(uint32_t);
 
 ///
 /// Entry point
 ///
 int main(void)
 {
-  
+
+#define _32MHZ_CLOCK 1
+#if _32MHZ_CLOCK
+  /* Configure for the 32MHz Clock, as per Taiyo-Yuden Datasheet */
+
+  /* First, check if it's not already set */
+  if (*(uint32_t *)0x10001008 == 0xFFFFFFFF) 
+  { 
+    _debug_printf("setting clock to 32mhz");
+
+    /* wait for it to not be busy */
+    NRF_NVMC->CONFIG = NVMC_CONFIG_WEN_Wen << NVMC_CONFIG_WEN_Pos; 
+    while (NRF_NVMC->READY == NVMC_READY_READY_Busy){} 
+    
+    /* Configure for the proper 32mhz clock */
+    *(uint32_t *)0x10001008 = 0xFFFFFF00; 
+    NRF_NVMC->CONFIG = NVMC_CONFIG_WEN_Ren << NVMC_CONFIG_WEN_Pos; 
+    while (NRF_NVMC->READY == NVMC_READY_READY_Busy){} 
+
+    /* Reset */
+    NVIC_SystemReset(); 
+    while (true){} 
+  } 
+ 
+#endif
+
   /* HW INIT, clocks and so forth */
   hw_init();
 
@@ -59,7 +89,7 @@ int main(void)
 ///
 bool check_enter_bootloader()
 {  
-  return false; // XXX editing debugger for now
+  return true; // XXX editing debugger for now
 
   bool should_enter = false;
 
@@ -100,22 +130,9 @@ void launch_application()
 ///
 /// Softdevice dispatcher 
 ///
-void sd_dispatch(ble_evt_t* p_ble_evt)
+void sd_dispatch(uint32_t event)
 {
-
-  /* first, hand the event to any subsystems that might need it */
-  ble_conn_params_on_ble_evt(p_ble_evt);
-  ble_advertising_on_ble_evt(p_ble_evt);
-  
-  /* then, handle anything else here */
-  //uint32_t error;
-
-  switch (p_ble_evt->header.evt_id)
-  {
-    default:
-      break;
-  }
-
+  // do stuff
 }
 
 
@@ -125,47 +142,53 @@ void sd_dispatch(ble_evt_t* p_ble_evt)
 
 void sd_init()
 {
-  uint32_t error;
-  /* Define a clock source and hand it to the soft device (in your board) */
-  nrf_clock_lf_cfg_t clock_lf_cfg =                    \
-  {.source        = NRF_CLOCK_LF_SRC_RC,               \
-   .rc_ctiv       = 0,                                 \
-   .rc_temp_ctiv  = 0,                                 \
-   .xtal_accuracy = NRF_CLOCK_LF_XTAL_ACCURACY_250_PPM
-  }
-  ;
-  
-  _debug_printf("size of buffer for softdevice: 0x%x bytes", BLE_STACK_EVT_MSG_BUF_SIZE);
 
-  /* expanded from a macro */
-  static uint32_t BLE_EVT_BUFFER[CEIL_DIV(BLE_STACK_EVT_MSG_BUF_SIZE, sizeof(uint32_t))];
-  error = softdevice_handler_init(&clock_lf_cfg, BLE_EVT_BUFFER, sizeof(BLE_EVT_BUFFER), NULL);
-  check_error(error);
+  uint32_t         err_code;
+  sd_mbr_command_t com = {SD_MBR_COMMAND_INIT_SD, };
 
-  _debug_printf("ing");
+  _debug_printf("Initializing the softdevice handlers...");
+ 
+  /* Initialize Softdevice */ 
+  err_code = sd_mbr_command(&com);
+  check_error(err_code); 
 
-  /* Ask for just one peripheral connection */
+  _debug_printf("Setting vector table base...");
+  /* Set vector table base */
+  err_code = sd_softdevice_vector_table_base_set(BOOTLOADER_REGION_START);
+  check_error(err_code);
+
+  _debug_printf("Setting clock source...");
+  /* Give it the clock config */
+  SOFTDEVICE_HANDLER_APPSH_INIT(NRF_CLOCK_LFCLKSRC_RC_250_PPM_250MS_CALIBRATION, true);
+
+  // Enable BLE stack 
   ble_enable_params_t ble_enable_params;
-  error = softdevice_enable_get_default_config(0,1,&ble_enable_params);
-  check_error(error);
+  memset(&ble_enable_params, 0, sizeof(ble_enable_params));
+  ble_enable_params.gatts_enable_params.service_changed = 1;
+  
+  _debug_printf("Enabling bluetooth...");
+  err_code = sd_ble_enable(&ble_enable_params);
+  check_error(err_code);
 
-  /* Set the MTU size and enable the softdevice */
-  error = softdevice_enable(&ble_enable_params);
-  check_error(error);
+  _debug_printf("Setting the handler...");
+  err_code = softdevice_sys_evt_handler_set(sd_dispatch);
+  check_error(err_code);
 
-  /* Subscribe to the softdevice newsletter for more events */
-  error = softdevice_ble_evt_handler_set(sd_dispatch);
-  check_error(error);
+  _debug_printf("Initializing Scheduler...");
+  APP_SCHED_INIT(0, 20);
+
+  _debug_printf("Soft device initialized");
+
 }
 
 void check_error(uint32_t error)
 {
   if (error != NRF_SUCCESS)
   {
-    _debug_printf("Encountered an error (%d), jumping out of bootloader", error);
-    launch_application();
+    _debug_printf("Return code (%d) not success (%d)", error, NRF_SUCCESS);
+  } else {
+    _debug_printf("Check: No error (%d)", error);
   }
-  _debug_printf("Check: No error (%d)", error);
   
 }
 
@@ -186,5 +209,6 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info)
    * pc-- pc at fault
    * info-- more info?
    */
+  _debug_printf("app error fault handler");
   check_error(id);
 }
