@@ -59,7 +59,7 @@ int main(void)
 ///
 bool check_enter_bootloader()
 {  
-  return true; // XXX editing debugger for now
+  return false; // XXX editing debugger for now
 
   bool should_enter = false;
 

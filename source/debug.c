@@ -494,5 +494,9 @@ _printf(const char *fmt, ...)
 }
 #endif
 #endif
+#else
+unsigned int _clock() { return 0; }
+void _printf(const char *fmt, ...) { }
 #endif
+
 

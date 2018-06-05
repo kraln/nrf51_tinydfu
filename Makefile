@@ -36,7 +36,8 @@ INCLUDES := \
 
 # Softdevice / nRF SDK includes
 INCLUDES += \
-	$(SDK_ROOT)/components \
+  $(SDK_ROOT)/components/libraries/experimental_section_vars \
+  $(SDK_ROOT)/components \
   $(SDK_ROOT)/components/toolchain \
   $(SDK_ROOT)/components/toolchain/gcc \
   $(SDK_ROOT)/components/toolchain/cmsis/include \
@@ -80,7 +81,6 @@ INCLUDES += \
   $(SDK_ROOT)/components/drivers_nrf/power \
   $(SDK_ROOT)/components/libraries/fstorage \
   $(SDK_ROOT)/components/libraries/util \
-  $(SDK_ROOT)/components/libraries/experimental_section_vars \
   $(SDK_ROOT)/components/libraries/timer \
   $(SDK_ROOT)/components/libraries/scheduler \
 
@@ -122,7 +122,7 @@ COMMON_FLAGS := -g -c -Wall -Werror -ffunction-sections -fdata-sections -fno-str
 	-DTARGET=NRF51 -DNRF51 \
 	-DS130 -DBLE_STACK_SUPPORT_REQD -DNRF_SD_BLE_API_VERSION=2 -DSOFTDEVICE_PRESENT --short-enums -fno-builtin\
 	-DPROGRAM_VERSION=\"$(PROGRAM_VERSION)\" \
-	-DSEMIHOSTED 
+#	-DSEMIHOSTED 
 
 COMMON_ASFLAGS := -D__ASSEMBLY__ -x assembler-with-cpp
 
