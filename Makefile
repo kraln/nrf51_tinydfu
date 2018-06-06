@@ -51,28 +51,8 @@ INCLUDES += \
 	$(SDK_ROOT)/components/ble/ble_advertising \
   $(SDK_ROOT)/components/ble/ble_dtm \
   $(SDK_ROOT)/components/ble/peer_manager \
-  $(SDK_ROOT)/components/ble/ble_services/ble_bas_c \
-  $(SDK_ROOT)/components/ble/ble_services/ble_hrs_c \
-  $(SDK_ROOT)/components/ble/ble_services/ble_ancs_c \
-  $(SDK_ROOT)/components/ble/ble_services/ble_ias_c \
-  $(SDK_ROOT)/components/ble/ble_services/ble_gls \
-	$(SDK_ROOT)/components/ble/ble_services/ble_lbs_c \
-  $(SDK_ROOT)/components/ble/ble_services/ble_rscs_c \
-  $(SDK_ROOT)/components/ble/ble_services/ble_lls \
-  $(SDK_ROOT)/components/ble/ble_services/ble_bas \
-  $(SDK_ROOT)/components/ble/ble_services/ble_ans_c \
   $(SDK_ROOT)/components/ble/ble_services/ble_nus_c \
-  $(SDK_ROOT)/components/ble/ble_services/ble_ias \
-  $(SDK_ROOT)/components/ble/ble_services/ble_dfu \
-  $(SDK_ROOT)/components/ble/ble_services/ble_lbs \
-  $(SDK_ROOT)/components/ble/ble_services/ble_hts \
-  $(SDK_ROOT)/components/ble/ble_services/ble_cscs \
-  $(SDK_ROOT)/components/ble/ble_services/ble_cts_c \
   $(SDK_ROOT)/components/ble/ble_services/ble_nus \
-  $(SDK_ROOT)/components/ble/ble_services/ble_hids \
-  $(SDK_ROOT)/components/ble/ble_services/ble_tps \
-  $(SDK_ROOT)/components/ble/ble_services/ble_dis \
-  $(SDK_ROOT)/components/ble/ble_services/ble_rscs \
  	$(SDK_ROOT)/components/drivers_nrf/comp \
   $(SDK_ROOT)/components/drivers_nrf/hal \
   $(SDK_ROOT)/components/drivers_nrf/common \
@@ -124,14 +104,15 @@ COMMON_FLAGS := -g -c -Wall -Werror -ffunction-sections -fdata-sections -fno-str
 	-DTARGET=NRF51 -DNRF51 -DS110 -DBLE_STACK_SUPPORT_REQD -DNRF_SD_BLE_API_VERSION=2 -DSOFTDEVICE_PRESENT \
 	--short-enums -fno-builtin \
 	-DPROGRAM_VERSION=\"$(PROGRAM_VERSION)\" \
-	-DSEMIHOSTED \
 	-DNO_VTOR_CONFIG \
 	-DDEBUG
+
+#	-DSEMIHOSTED \
 
 COMMON_ASFLAGS := -D__ASSEMBLY__ -x assembler-with-cpp
 
 TARGET_ARCHFLAGS := -march=armv6-m -mthumb -mcpu=cortex-m0 -mfloat-abi=soft 
-TARGET_FLAGS := $(COMMON_FLAGS) -O1 -g -fmerge-constants $(TARGET_ARCHFLAGS) $(INCLUDE)
+TARGET_FLAGS := $(COMMON_FLAGS) -Os -g -fmerge-constants $(TARGET_ARCHFLAGS) $(INCLUDE)
 TARGET_CFLAGS := $(TARGET_FLAGS)
 TARGET_ASFLAGS := $(TARGET_FLAGS) $(COMMON_ASFLAGS)
 
@@ -155,6 +136,7 @@ CFILES += \
   ../$(SDK_ROOT)/components/libraries/timer/app_timer.c \
   ../$(SDK_ROOT)/components/libraries/util/app_util_platform.c \
   ../$(SDK_ROOT)/components/libraries/fstorage/fstorage.c \
+  ../$(SDK_ROOT)/components/drivers_nrf/pstorage/pstorage.c \
   ../$(SDK_ROOT)/components/ble/common/ble_conn_params.c \
   ../$(SDK_ROOT)/components/ble/common/ble_advdata.c \
   ../$(SDK_ROOT)/components/ble/common/ble_srv_common.c \
@@ -283,6 +265,10 @@ $(OUTPUTDIR)/tags: $(CFILES) $(HFILES)
 	@$(TARGET_CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(TARGET_CFLAGS) -o $@ $<
 
 ../$(SDK_ROOT)/components/libraries/fstorage/fstorage.o : ../$(SDK_ROOT)/components/libraries/fstorage/fstorage.c
+	@echo $(@F)
+	@$(TARGET_CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(TARGET_CFLAGS) -o $@ $<
+
+../$(SDK_ROOT)/components/drivers_nrf/pstorage/pstorage.o : ../$(SDK_ROOT)/components/drivers_nrf/pstorage/pstorage.c
 	@echo $(@F)
 	@$(TARGET_CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(TARGET_CFLAGS) -o $@ $<
 
