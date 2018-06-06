@@ -112,7 +112,7 @@ COMMON_FLAGS := -g -c -Wall -Werror -ffunction-sections -fdata-sections -fno-str
 COMMON_ASFLAGS := -D__ASSEMBLY__ -x assembler-with-cpp
 
 TARGET_ARCHFLAGS := -march=armv6-m -mthumb -mcpu=cortex-m0 -mfloat-abi=soft 
-TARGET_FLAGS := $(COMMON_FLAGS) -Os -g -fmerge-constants $(TARGET_ARCHFLAGS) $(INCLUDE)
+TARGET_FLAGS := $(COMMON_FLAGS) -Og -g -fmerge-constants $(TARGET_ARCHFLAGS) $(INCLUDE)
 TARGET_CFLAGS := $(TARGET_FLAGS)
 TARGET_ASFLAGS := $(TARGET_FLAGS) $(COMMON_ASFLAGS)
 

@@ -349,7 +349,7 @@
 // <0=> 32 MHz 
 
 #ifndef CLOCK_CONFIG_XTAL_FREQ
-#define CLOCK_CONFIG_XTAL_FREQ 255
+#define CLOCK_CONFIG_XTAL_FREQ 0
 #endif
 
 // <o> CLOCK_CONFIG_LF_SRC  - LF Clock Source
@@ -359,7 +359,7 @@
 // <2=> Synth 
 
 #ifndef CLOCK_CONFIG_LF_SRC
-#define CLOCK_CONFIG_LF_SRC 1
+#define CLOCK_CONFIG_LF_SRC 0
 #endif
 
 // <o> CLOCK_CONFIG_IRQ_PRIORITY  - Interrupt priority

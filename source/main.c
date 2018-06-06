@@ -11,10 +11,12 @@
 #include "ble_advertising.h"
 #include "softdevice_handler.h"
 #include "softdevice_handler_appsh.h"
+#include "app_timer_appsh.h"
 #include "app_scheduler.h"
 #include "app_timer.h"
 #include "ble_nus.h"
 #include "ble_hci.h"
+#include "pstorage_platform.h"
 
 #define WAIT_TIME 3 /* seconds */
 
@@ -32,8 +34,14 @@ void sd_init();
 void ble_init();
 void check_error(uint32_t);
 void sd_dispatch(ble_evt_t *);
+void sys_evt_dispatch(uint32_t);
 void nus_data_handler(ble_nus_t*, uint8_t*, uint16_t);
 void on_adv_evt(ble_adv_evt_t);
+
+/* Software device stuff */
+ble_nus_t  m_nus; /* uart service identifier */
+uint16_t   m_conn_handle = BLE_CONN_HANDLE_INVALID; /* connection handle */
+ble_uuid_t m_adv_uuids[] = {{BLE_UUID_NUS_SERVICE, BLE_UUID_TYPE_VENDOR_BEGIN}}; /* uuids for uart service */
 
 ///
 /// Entry point
@@ -148,9 +156,9 @@ void launch_application()
 
 void serial_rx(uint8_t* data, uint16_t len)
 {
- _debug_printf("Got data len %d bytes", len);
-
- // app_uart_put -> reply
+  const char* test = "Received: ";
+  ble_nus_string_send(&m_nus, (uint8_t *)test, strlen(test));
+  ble_nus_string_send(&m_nus, data, len);
 }
 
 
@@ -163,7 +171,7 @@ void serial_rx(uint8_t* data, uint16_t len)
 #define DEVICE_NAME       "KRALN TINYDFU"
 
 #define MIN_CONN_INTERVAL 16   /* units of 1.25ms -> 20ms */
-#define MAX_CONN_INTERVAL 80   /* units of 1.25ms -> 100ms */
+#define MAX_CONN_INTERVAL 60   /* units of 1.25ms -> 75ms */
 #define CONN_SUP_TIMEOUT  400  /* units of 10ms -> 4s */
 #define APP_ADV_INTERVAL  64   /* units of 0.625ms -> 40ms */
 #define APP_ADV_TIMEOUT   180  /* units of 1s -> 3 minutes (max) */
@@ -171,10 +179,6 @@ void serial_rx(uint8_t* data, uint16_t len)
 #define FIRST_CONN_PARAMS_UPDATE_DELAY  5000  /* assuming RTC1 prescaler = 0, 5s */
 #define NEXT_CONN_PARAMS_UPDATE_DELAY   30000 /* assuming same as above */
 #define MAX_CONN_PARAMS_UPDATE_COUNT    3     /* give up after this many attempts */
-
-ble_nus_t  m_nus; /* uart service identifier */
-uint16_t   m_conn_handle = BLE_CONN_HANDLE_INVALID; /* connection handle */
-ble_uuid_t m_adv_uuids[] = {{BLE_UUID_NUS_SERVICE, BLE_UUID_TYPE_VENDOR_BEGIN}}; /* uuids for uart service */
 
 void sd_conn_params(ble_conn_params_evt_t* p_evt)
 {
@@ -374,21 +378,37 @@ void sd_init()
   err_code = sd_ble_enable(&ble_enable_params);
   check_error(err_code);
 
-  _debug_printf("Setting the handler...");
+  _debug_printf("Setting the ble handler...");
   err_code = softdevice_ble_evt_handler_set(sd_dispatch);
   check_error(err_code);
 
+  _debug_printf("Setting the softdevice handler..");
+  err_code = softdevice_sys_evt_handler_set(sys_evt_dispatch);
+  check_error(err_code);
+
   _debug_printf("Initializing Scheduler...");
-  APP_SCHED_INIT(0, 20);
+  APP_SCHED_INIT(MAX(APP_TIMER_SCHED_EVT_SIZE, 0), 20);
 
   _debug_printf("Soft device initialized");
 
 }
 
+void sys_evt_dispatch(uint32_t disp)
+{
+  pstorage_sys_event_handler(disp);
+}
+
+void was_error(uint32_t error)
+{
+  volatile uint32_t e __attribute__((unused)) = error;
+}
+
+/* I want to debug on this */
 void check_error(uint32_t error)
 {
   if (error != NRF_SUCCESS)
   {
+    was_error(error);
     _debug_printf("Return code (%d) not success (%d)", error, NRF_SUCCESS);
   }
 }
@@ -403,7 +423,7 @@ void app_error_handler_bare(uint32_t error)
   check_error(error);
 }
 
-void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info)
+void __attribute__((unused)) app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info)
 {
   /* 
    * id-- identifier
