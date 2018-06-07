@@ -8,8 +8,11 @@
 NAME = nrf51_tinydfu
 SHELL = /bin/bash
 
-#SDK_ROOT = ../../../../mnt/d/nrfsdk10  # Windows
-SDK_ROOT = ../../Downloads/nRF51_SDK_10 # Mac
+#SDK_ROOT = ../../../../mnt/d/nrfsdk10
+# Windows
+
+SDK_ROOT = ../../Downloads/nRF51_SDK_10
+# Mac
 
 # Debugging stuff
 TERMINAL ?= xterm -e

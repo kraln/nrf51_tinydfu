@@ -137,6 +137,53 @@ void launch_application()
 }
 
 ///
+/// Take two hex characters in, return one byte
+///
+uint8_t htoi (uint8_t * ptr)
+{
+  uint8_t value = 0;
+  uint8_t ch = *ptr;
+
+  if (ch >= '0' && ch <= '9')
+    value = (ch - '0');
+  else if (ch >= 'A' && ch <= 'F')
+    value = (ch - 'A' + 10);
+  else if (ch >= 'a' && ch <= 'f')
+    value = (ch - 'a' + 10);
+
+  ch = *(++ptr);
+
+  if (ch >= '0' && ch <= '9')
+    value = (value << 4) + (ch - '0');
+  else if (ch >= 'A' && ch <= 'F')
+    value = (value << 4) + (ch - 'A' + 10);
+  else if (ch >= 'a' && ch <= 'f')
+    value = (value << 4) + (ch - 'a' + 10);
+
+  return value;
+}
+
+///
+/// Given one byte, return two hex characters in buffer
+///
+void itoh (uint8_t * ptr, uint8_t in)
+{
+  const uint8_t lut[16] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', };
+  ptr[0] = lut[in >> 4];
+  ptr[1] = lut[in & 0xf];
+}
+
+/*
+ * Memory Layout
+ * 0x0003C000 BOOTLOADER_REGION_START
+ * 0x00018000 APPLICATION_ENTRY
+ * 0x00001000 Softdevice S110 v10
+ * 0x00000000 MBR
+ *
+ * Application size: 0x24000
+ */
+
+///
 //  Handle Serial RX
 ///
 
@@ -146,14 +193,69 @@ void serial_rx(uint8_t* data, uint16_t len)
   {
     case 'd':
       /* delete page */
+      {
+        /*
+         * Command format: 
+         *
+         * byte 0: d
+         * byte 1: which page to delete
+         *
+         * Valid pages to delete: 0x00018000 - 0x0003C000
+         * Page Number(s) 96 - 239
+         */
+        if (len != 2)
+        {
+          return; /* invalid length */
+        }
 
+        if (data[1] < 96 || data[1] >= 240)
+        {
+          return; /* invalid page */
+        }
+
+        sd_flash_page_erase(data[1]);
+      }
       break;
+
     case 'w':
-      /* write data */
+      /* write page (assuming erased page) */
 
       break;
     case 'r': 
-      /* read data */
+      /* read page */
+      {
+        /*
+         * Command format: 
+         *
+         * byte 0: d
+         * byte 1: which page to read
+         *
+         * Valid pages to delete: 0x00018000 - 0x0003C000
+         * Page Number(s) 96 - 239
+         */
+        if (len != 2)
+        {
+          return; /* invalid length */
+        }
+
+        if (data[1] < 96 || data[1] >= 240)
+        {
+          return; /* invalid page */
+        }
+
+        for (int i = 0; i < 1024; i++)
+        {
+          uint32_t * addr = (uint32_t *) (data[1]*1024)+i;
+          itoh(&application_buffer[i*2], *addr);
+        }
+
+        /* max packet size 6 x 20 bytes */
+        /* split read into 32 messages */
+        for (int i = 0; i < 2048; i+=64)
+        {
+          ble_nus_string_send(&m_nus, &application_buffer[i], 64);
+        }
+      }
 
       break;
     case 'c':
