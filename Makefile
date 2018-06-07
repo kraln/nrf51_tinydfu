@@ -7,7 +7,9 @@
 ##########################################################################
 NAME = nrf51_tinydfu
 SHELL = /bin/bash
-SDK_ROOT = ../../../../mnt/d/nrfsdk10
+
+#SDK_ROOT = ../../../../mnt/d/nrfsdk10  # Windows
+SDK_ROOT = ../../Downloads/nRF51_SDK_10 # Mac
 
 # Debugging stuff
 TERMINAL ?= xterm -e
@@ -42,19 +44,19 @@ INCLUDES += \
   $(SDK_ROOT)/components/toolchain/gcc \
   $(SDK_ROOT)/components/toolchain/cmsis/include \
   $(SDK_ROOT)/components/device \
-	$(SDK_ROOT)/components/softdevice/s130/headers \
-  $(SDK_ROOT)/components/softdevice/s130/headers/nrf51 \
+  $(SDK_ROOT)/components/softdevice/s110/headers \
+  $(SDK_ROOT)/components/softdevice/s110/headers/nrf51 \
   $(SDK_ROOT)/components/softdevice/common/softdevice_handler \
   $(SDK_ROOT)/components/ble/common \
   $(SDK_ROOT)/components/ble/ble_radio_notification \
-	$(SDK_ROOT)/components/ble/nrf_ble_qwr \
+  $(SDK_ROOT)/components/ble/nrf_ble_qwr \
   $(SDK_ROOT)/components/ble/ble_racp \
-	$(SDK_ROOT)/components/ble/ble_advertising \
+  $(SDK_ROOT)/components/ble/ble_advertising \
   $(SDK_ROOT)/components/ble/ble_dtm \
   $(SDK_ROOT)/components/ble/peer_manager \
   $(SDK_ROOT)/components/ble/ble_services/ble_nus_c \
   $(SDK_ROOT)/components/ble/ble_services/ble_nus \
- 	$(SDK_ROOT)/components/drivers_nrf/comp \
+  $(SDK_ROOT)/components/drivers_nrf/comp \
   $(SDK_ROOT)/components/drivers_nrf/hal \
   $(SDK_ROOT)/components/drivers_nrf/common \
   $(SDK_ROOT)/components/drivers_nrf/delay \
