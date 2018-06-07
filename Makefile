@@ -46,6 +46,7 @@ INCLUDES += \
   $(SDK_ROOT)/components/softdevice/s130/headers/nrf51 \
   $(SDK_ROOT)/components/softdevice/common/softdevice_handler \
   $(SDK_ROOT)/components/ble/common \
+  $(SDK_ROOT)/components/ble/ble_radio_notification \
 	$(SDK_ROOT)/components/ble/nrf_ble_qwr \
   $(SDK_ROOT)/components/ble/ble_racp \
 	$(SDK_ROOT)/components/ble/ble_advertising \
@@ -140,6 +141,7 @@ CFILES += \
   ../$(SDK_ROOT)/components/ble/common/ble_conn_params.c \
   ../$(SDK_ROOT)/components/ble/common/ble_advdata.c \
   ../$(SDK_ROOT)/components/ble/common/ble_srv_common.c \
+  ../$(SDK_ROOT)/components/ble/ble_radio_notification/ble_radio_notification.c \
   ../$(SDK_ROOT)/components/ble/ble_services/ble_nus/ble_nus.c \
   ../$(SDK_ROOT)/components/ble/ble_advertising/ble_advertising.c \
   ../$(SDK_ROOT)/components/libraries/scheduler/app_scheduler.c 
@@ -169,6 +171,19 @@ clean:
 	@echo clean ...
 	@rm -rf $(BUILD) $(NAME)_test $(NAME)_test.exe $(NAME)_test.xml \
 		$(OUTPUT).bin $(OUTPUT).hex tags test_coverage
+	@rm -f ../$(SDK_ROOT)/components/ble/common/ble_conn_params.o
+	@rm -f ../$(SDK_ROOT)/components/ble/common/ble_advdata.o
+	@rm -f ../$(SDK_ROOT)/components/softdevice/common/softdevice_handler/softdevice_handler.o
+	@rm -f ../$(SDK_ROOT)/components/softdevice/common/softdevice_handler/softdevice_handler_appsh.o
+	@rm -f ../$(SDK_ROOT)/components/ble/ble_services/ble_nus/ble_nus.o
+	@rm -f ../$(SDK_ROOT)/components/ble/ble_advertising/ble_advertising.o
+	@rm -f ../$(SDK_ROOT)/components/libraries/timer/app_timer.o
+	@rm -f ../$(SDK_ROOT)/components/ble/common/ble_srv_common.o
+	@rm -f ../$(SDK_ROOT)/components/ble/ble_radio_notification/ble_radio_notification.o
+	@rm -f ../$(SDK_ROOT)/components/libraries/util/app_util_platform.o
+	@rm -f ../$(SDK_ROOT)/components/libraries/fstorage/fstorage.o
+	@rm -f ../$(SDK_ROOT)/components/drivers_nrf/pstorage/pstorage.o
+	@rm -f ../$(SDK_ROOT)/components/libraries/scheduler/app_scheduler.o
 
 ctags:
 	@[ -d $(BUILD) ] || mkdir -p $(BUILD)
@@ -257,6 +272,10 @@ $(OUTPUTDIR)/tags: $(CFILES) $(HFILES)
 	@$(TARGET_CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(TARGET_CFLAGS) -o $@ $<
 
 ../$(SDK_ROOT)/components/ble/common/ble_srv_common.o : ../$(SDK_ROOT)/components/ble/common/ble_srv_common.c 
+	@echo $(@F)
+	@$(TARGET_CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(TARGET_CFLAGS) -o $@ $<
+
+../$(SDK_ROOT)/components/ble/ble_radio_notification/ble_radio_notification.o : ../$(SDK_ROOT)/components/ble/ble_radio_notification/ble_radio_notification.c 
 	@echo $(@F)
 	@$(TARGET_CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(TARGET_CFLAGS) -o $@ $<
 

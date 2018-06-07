@@ -23,7 +23,7 @@
 /*lint ++flb "Enter library region" */
 
 
-#define __SYSTEM_CLOCK      (16000000UL)     /*!< nRF51 devices use a fixed System Clock Frequency of 16MHz */
+#define __SYSTEM_CLOCK      (32000000UL)     /*!< 32MHz for the Taiyo Yuden. Change to 16MHz for normal*/
 
 static bool is_manual_peripheral_setup_needed(void);
 static bool is_disabled_in_debug_needed(void);

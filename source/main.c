@@ -16,11 +16,12 @@
 #include "app_timer.h"
 #include "ble_nus.h"
 #include "ble_hci.h"
+#include "ble_radio_notification.h"
 #include "pstorage_platform.h"
 
 #define WAIT_TIME 3 /* seconds */
 
-#define APPLICATION_ENTRY 0x0001B000
+#define APPLICATION_ENTRY 0x00018000 //was: 0x0001B
 #define BOOTLOADER_REGION_START 0x0003C000
 #define APPLICATION_BUFFER 0x1000 /* approx 4k */
 
@@ -37,6 +38,7 @@ void sd_dispatch(ble_evt_t *);
 void sys_evt_dispatch(uint32_t);
 void nus_data_handler(ble_nus_t*, uint8_t*, uint16_t);
 void on_adv_evt(ble_adv_evt_t);
+void _32mhz_clock();
 
 /* Software device stuff */
 ble_nus_t  m_nus; /* uart service identifier */
@@ -49,32 +51,8 @@ ble_uuid_t m_adv_uuids[] = {{BLE_UUID_NUS_SERVICE, BLE_UUID_TYPE_VENDOR_BEGIN}};
 int main(void)
 {
 
-#define _32MHZ_CLOCK 1
-#if _32MHZ_CLOCK
-  /* Configure for the 32MHz Clock, as per Taiyo-Yuden Datasheet */
-
-  /* First, check if it's not already set */
-  if (*(uint32_t *)0x10001008 == 0xFFFFFFFF) 
-  { 
-    _debug_printf("setting clock to 32mhz");
-
-    /* wait for it to not be busy */
-    NRF_NVMC->CONFIG = NVMC_CONFIG_WEN_Wen << NVMC_CONFIG_WEN_Pos; 
-    while (NRF_NVMC->READY == NVMC_READY_READY_Busy){} 
-    
-    /* Configure for the proper 32mhz clock */
-    *(uint32_t *)0x10001008 = 0xFFFFFF00; 
-    NRF_NVMC->CONFIG = NVMC_CONFIG_WEN_Ren << NVMC_CONFIG_WEN_Pos; 
-    while (NRF_NVMC->READY == NVMC_READY_READY_Busy){} 
-
-    /* Reset */
-    NVIC_SystemReset(); 
-    while (true){} 
-  } 
- 
-#endif
-
   /* HW INIT, clocks and so forth */
+  _32mhz_clock();
   hw_init();
 
   _debug_printf("hardware initialized");
@@ -159,6 +137,32 @@ void serial_rx(uint8_t* data, uint16_t len)
   const char* test = "Received: ";
   ble_nus_string_send(&m_nus, (uint8_t *)test, strlen(test));
   ble_nus_string_send(&m_nus, data, len);
+}
+
+void _32mhz_clock()
+{
+  /* Configure for the 32MHz Clock, as per Taiyo-Yuden Datasheet */
+
+  /* First, check if it's not already set */
+  if (*(uint32_t *)0x10001008 == 0xFFFFFFFF) 
+  { 
+    _debug_printf("setting clock to 32mhz");
+
+    /* wait for it to not be busy */
+    NRF_NVMC->CONFIG = NVMC_CONFIG_WEN_Wen << NVMC_CONFIG_WEN_Pos; 
+    while (NRF_NVMC->READY == NVMC_READY_READY_Busy){} 
+    
+    /* Configure for the proper 32mhz clock */
+    *(uint32_t *)0x10001008 = 0xFFFFFF00; 
+    NRF_NVMC->CONFIG = NVMC_CONFIG_WEN_Ren << NVMC_CONFIG_WEN_Pos; 
+    while (NRF_NVMC->READY == NVMC_READY_READY_Busy){} 
+
+    /* Reset */
+    NVIC_SystemReset(); 
+    while (true){} 
+  } 
+
+  NRF_CLOCK->XTALFREQ = 0xFFFFFF00;
 }
 
 
@@ -341,6 +345,13 @@ void sd_dispatch(ble_evt_t * event)
 }
 
 
+/* current radio state */
+volatile bool current_radio_active_state = false;
+void ble_on_radio_active_evt(bool radio_active)
+{
+      current_radio_active_state = radio_active;
+}
+
 ///
 /// Initialize the soft device.
 ///
@@ -366,8 +377,9 @@ void sd_init()
   check_error(err_code);
 
   _debug_printf("Setting clock source...");
+  
   /* Give it the clock config */
-  SOFTDEVICE_HANDLER_APPSH_INIT(NRF_CLOCK_LFCLKSRC_RC_250_PPM_250MS_CALIBRATION, true);
+  SOFTDEVICE_HANDLER_APPSH_INIT(NRF_CLOCK_LFCLKSRC_RC_250_PPM_250MS_CALIBRATION, NULL); /* when the second argument is not NULL, it wants a handler? */
 
   // Enable BLE stack 
   ble_enable_params_t ble_enable_params;
@@ -384,6 +396,10 @@ void sd_init()
 
   _debug_printf("Setting the softdevice handler..");
   err_code = softdevice_sys_evt_handler_set(sys_evt_dispatch);
+  check_error(err_code);
+
+  _debug_printf("Setting up the radio callback");
+  err_code = ble_radio_notification_init(NRF_APP_PRIORITY_LOW, NRF_RADIO_NOTIFICATION_DISTANCE_800US, ble_on_radio_active_evt);
   check_error(err_code);
 
   _debug_printf("Initializing Scheduler...");
