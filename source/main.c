@@ -45,7 +45,7 @@ ble_nus_t  m_nus; /* uart service identifier */
 uint16_t   m_conn_handle = BLE_CONN_HANDLE_INVALID; /* connection handle */
 ble_uuid_t m_adv_uuids[] = {{BLE_UUID_NUS_SERVICE, BLE_UUID_TYPE_VENDOR_BEGIN}}; /* uuids for uart service */
 bool       sd_initialized = false;
-
+volatile bool tx_wait     = false; // send one package and wait until it's recieved
 ///
 /// Entry point
 ///
@@ -219,41 +219,111 @@ void serial_rx(uint8_t* data, uint16_t len)
 
     case 'w':
       /* write page (assuming erased page) */
+      {
+        /*
+         * Command format: 
+         *
+         * byte 0: w
+         * byte 1: which page to write to
+         * byte 2: which portion to write
+         * byte 3-18: "hexlified" bytes
+         *
+         * Valid pages to delete: 0x00018000 - 0x0003C000
+         * Page Number(s) 96 - 239
+         * Portions: 0-127 (8 bytes)
+         */
+        if (len != 19)
+        {
+          {
+            const char* test = "! invalid args";
+            ble_nus_string_send(&m_nus, (uint8_t *)test, strlen(test));
+          }
+          return; /* invalid length */
+        }
+
+        if (data[1] < 96 || data[1] >= 240)
+        {
+          {
+            const char* test = "! invalid page";
+            ble_nus_string_send(&m_nus, (uint8_t *)test, strlen(test));
+          }
+          return; /* invalid page */
+        }
+
+        if (data[2] >= 128)
+        {
+          {
+            const char* test = "! invalid chunk";
+            ble_nus_string_send(&m_nus, (uint8_t *)test, strlen(test));
+          }
+          return; /* invalid page */
+        }
+
+        /* unhexlify it */
+        application_buffer[0] = htoi(&data[3]);
+        application_buffer[1] = htoi(&data[5]);
+        application_buffer[2] = htoi(&data[7]);
+        application_buffer[3] = htoi(&data[9]);
+        application_buffer[4] = htoi(&data[11]);
+        application_buffer[5] = htoi(&data[13]);
+        application_buffer[6] = htoi(&data[15]);
+        application_buffer[7] = htoi(&data[17]);
+
+        /* write it out */
+        uint32_t err = sd_flash_write((uint32_t *)(data[1] * 1024 + data[2] * 8), (const uint32_t *)&application_buffer[0], 2);
+        check_error(err);    
+      }
+
+
 
       break;
     case 'r': 
-      /* read page */
+      /* read page / chunk */
       {
         /*
          * Command format: 
          *
          * byte 0: d
          * byte 1: which page to read
+         * byte 2: which portion to read
          *
          * Valid pages to delete: 0x00018000 - 0x0003C000
          * Page Number(s) 96 - 239
+         * Portions: 0-255 (4 bytes)
          */
-        if (len != 2)
+        if (len != 3)
         {
+          {
+            const char* test = "! invalid args";
+            ble_nus_string_send(&m_nus, (uint8_t *)test, strlen(test));
+          }
           return; /* invalid length */
         }
 
         if (data[1] < 96 || data[1] >= 240)
         {
+          {
+            const char* test = "! invalid page";
+            ble_nus_string_send(&m_nus, (uint8_t *)test, strlen(test));
+          }
           return; /* invalid page */
         }
 
-        for (int i = 0; i < 1024; i++)
+        application_buffer[0] = 'r';
+        application_buffer[1] = data[1];
+        application_buffer[2] = data[2];
+
+        for (int i = 0; i < 4; i++)
         {
-          uint32_t * addr = (uint32_t *) (data[1]*1024)+i;
-          itoh(&application_buffer[i*2], *addr);
+          uint8_t * addr = (uint8_t *) ((data[1]*1024) + (data[2]*4) + i);
+          itoh(&application_buffer[3+(i*2)], *addr);
         }
 
-        /* max packet size 6 x 20 bytes */
-        /* split read into 32 messages */
-        for (int i = 0; i < 2048; i+=64)
+        /* split read into messages of 4 'bytes' (8 hex chars) */
+        uint32_t err = 0xDEADBEEF;
+        while(err != NRF_SUCCESS)
         {
-          ble_nus_string_send(&m_nus, &application_buffer[i], 64);
+          err = ble_nus_string_send(&m_nus, &application_buffer[0], 11);
         }
       }
 
@@ -280,7 +350,7 @@ void serial_rx(uint8_t* data, uint16_t len)
     default:
       /* unknown command */
       {
-        const char* test = "Unknown Command!";
+        const char* test = "! Unknown Cmd";
         ble_nus_string_send(&m_nus, (uint8_t *)test, strlen(test));
       }
   } 
@@ -481,6 +551,10 @@ void sd_dispatch(ble_evt_t * event)
       // No system attributes have been stored.
       err_code = sd_ble_gatts_sys_attr_set(m_conn_handle, NULL, 0, 0);
       check_error(err_code);
+      break;
+
+    case BLE_EVT_TX_COMPLETE:
+      tx_wait = false;
       break;
 
     default:
