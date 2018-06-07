@@ -44,6 +44,7 @@ void _32mhz_clock();
 ble_nus_t  m_nus; /* uart service identifier */
 uint16_t   m_conn_handle = BLE_CONN_HANDLE_INVALID; /* connection handle */
 ble_uuid_t m_adv_uuids[] = {{BLE_UUID_NUS_SERVICE, BLE_UUID_TYPE_VENDOR_BEGIN}}; /* uuids for uart service */
+bool       sd_initialized = false;
 
 ///
 /// Entry point
@@ -124,6 +125,13 @@ bool check_enter_bootloader()
 typedef void (*application_entry_t)(void);
 void launch_application()
 {
+  if (sd_initialized) /* should we do this in all cases? */
+  {
+    /* re-set the vector table base */
+    uint32_t err_code = sd_softdevice_vector_table_base_set(APPLICATION_ENTRY);
+    check_error(err_code);
+  }
+
   application_entry_t application_entry = *(application_entry_t *)(APPLICATION_ENTRY+4);
   application_entry();
 }
@@ -134,9 +142,46 @@ void launch_application()
 
 void serial_rx(uint8_t* data, uint16_t len)
 {
-  const char* test = "Received: ";
-  ble_nus_string_send(&m_nus, (uint8_t *)test, strlen(test));
-  ble_nus_string_send(&m_nus, data, len);
+  switch (data[0])
+  {
+    case 'd':
+      /* delete page */
+
+      break;
+    case 'w':
+      /* write data */
+
+      break;
+    case 'r': 
+      /* read data */
+
+      break;
+    case 'c':
+      /* check sum */
+
+      break;
+    case 'i':
+      /* get info */
+
+      break;
+    case 'y':
+      /* write info */
+
+      break;
+    case 'e':
+      /* echo */
+      {
+        ble_nus_string_send(&m_nus, data+1, len-1);
+      }
+
+      break;
+    default:
+      /* unknown command */
+      {
+        const char* test = "Unknown Command!";
+        ble_nus_string_send(&m_nus, (uint8_t *)test, strlen(test));
+      }
+  } 
 }
 
 void _32mhz_clock()
@@ -358,6 +403,7 @@ void ble_on_radio_active_evt(bool radio_active)
 
 void sd_init()
 {
+  sd_initialized = true;
 
   uint32_t         err_code;
   sd_mbr_command_t com = {SD_MBR_COMMAND_INIT_SD, };
@@ -372,6 +418,7 @@ void sd_init()
   check_error(err_code); 
 
   _debug_printf("Setting vector table base...");
+
   /* Set vector table base */
   err_code = sd_softdevice_vector_table_base_set(BOOTLOADER_REGION_START);
   check_error(err_code);
