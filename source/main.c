@@ -23,7 +23,7 @@
 
 #define APPLICATION_ENTRY 0x00018000 //was: 0x0001B
 #define BOOTLOADER_REGION_START 0x0003C000
-#define APPLICATION_BUFFER 0x1000 /* approx 4k */
+#define APPLICATION_BUFFER 0x100 /* approx 256 bytes */
 
 uint32_t m_uicr_bootloader_start_address __attribute__((section(".uicrBootStartAddress"))) = BOOTLOADER_REGION_START;
 uint8_t application_buffer[APPLICATION_BUFFER]; /* we're just gonna allocate this one up front */
@@ -205,15 +205,32 @@ void serial_rx(uint8_t* data, uint16_t len)
          */
         if (len != 2)
         {
+          {
+            const char* test = "! invalid args";
+            ble_nus_string_send(&m_nus, (uint8_t *)test, strlen(test));
+          }
           return; /* invalid length */
         }
 
         if (data[1] < 96 || data[1] >= 240)
         {
+          {
+            const char* test = "! invalid page";
+            ble_nus_string_send(&m_nus, (uint8_t *)test, strlen(test));
+          } 
           return; /* invalid page */
         }
 
-        sd_flash_page_erase(data[1]);
+        uint32_t err = sd_flash_page_erase(data[1]);
+        check_error(err);
+
+        application_buffer[60] = 'd';
+        application_buffer[61] = data[1];
+        application_buffer[62] = 'O';
+        application_buffer[63] = 'K';
+        ble_nus_string_send(&m_nus, &application_buffer[60], 4);
+        check_error(err);
+
       }
       break;
 
@@ -256,7 +273,7 @@ void serial_rx(uint8_t* data, uint16_t len)
             const char* test = "! invalid chunk";
             ble_nus_string_send(&m_nus, (uint8_t *)test, strlen(test));
           }
-          return; /* invalid page */
+          return; /* invalid chunk */
         }
 
         /* unhexlify it */
@@ -271,10 +288,17 @@ void serial_rx(uint8_t* data, uint16_t len)
 
         /* write it out */
         uint32_t err = sd_flash_write((uint32_t *)(data[1] * 1024 + data[2] * 8), (const uint32_t *)&application_buffer[0], 2);
-        check_error(err);    
+        check_error(err);   
+
+        application_buffer[60] = 'w';
+        application_buffer[61] = data[1];
+        application_buffer[62] = data[2];
+        application_buffer[63] = 'O';
+        application_buffer[64] = 'K';
+        ble_nus_string_send(&m_nus, &application_buffer[60], 5);
+        check_error(err);
+
       }
-
-
 
       break;
     case 'r': 
@@ -289,7 +313,7 @@ void serial_rx(uint8_t* data, uint16_t len)
          *
          * Valid pages to delete: 0x00018000 - 0x0003C000
          * Page Number(s) 96 - 239
-         * Portions: 0-255 (4 bytes)
+         * Portions: 0-127 (8 bytes)
          */
         if (len != 3)
         {
@@ -309,22 +333,31 @@ void serial_rx(uint8_t* data, uint16_t len)
           return; /* invalid page */
         }
 
+        if (data[2] >= 128)
+        {
+          {
+            const char* test = "! invalid chunk";
+            ble_nus_string_send(&m_nus, (uint8_t *)test, strlen(test));
+          }
+          return; /* invalid chunk */
+        }
+
+        uint8_t * addr = (uint8_t *) ((data[1]*1024) + (data[2]*8));        
+        itoh(&application_buffer[3+(0*2)], *addr); addr++;
+        itoh(&application_buffer[3+(1*2)], *addr); addr++;
+        itoh(&application_buffer[3+(2*2)], *addr); addr++;
+        itoh(&application_buffer[3+(3*2)], *addr); addr++;
+        itoh(&application_buffer[3+(4*2)], *addr); addr++;
+        itoh(&application_buffer[3+(5*2)], *addr); addr++;
+        itoh(&application_buffer[3+(6*2)], *addr); addr++;
+        itoh(&application_buffer[3+(7*2)], *addr);
+ 
         application_buffer[0] = 'r';
         application_buffer[1] = data[1];
         application_buffer[2] = data[2];
-
-        for (int i = 0; i < 4; i++)
-        {
-          uint8_t * addr = (uint8_t *) ((data[1]*1024) + (data[2]*4) + i);
-          itoh(&application_buffer[3+(i*2)], *addr);
-        }
-
-        /* split read into messages of 4 'bytes' (8 hex chars) */
-        uint32_t err = 0xDEADBEEF;
-        while(err != NRF_SUCCESS)
-        {
-          err = ble_nus_string_send(&m_nus, &application_buffer[0], 11);
-        }
+       
+        uint32_t err = ble_nus_string_send(&m_nus, &application_buffer[0], 16+3);
+        check_error(err);
       }
 
       break;
