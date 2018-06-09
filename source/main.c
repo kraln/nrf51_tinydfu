@@ -136,43 +136,6 @@ void launch_application()
   application_entry();
 }
 
-///
-/// Take two hex characters in, return one byte
-///
-uint8_t htoi (uint8_t * ptr)
-{
-  uint8_t value = 0;
-  uint8_t ch = *ptr;
-
-  if (ch >= '0' && ch <= '9')
-    value = (ch - '0');
-  else if (ch >= 'A' && ch <= 'F')
-    value = (ch - 'A' + 10);
-  else if (ch >= 'a' && ch <= 'f')
-    value = (ch - 'a' + 10);
-
-  ch = *(++ptr);
-
-  if (ch >= '0' && ch <= '9')
-    value = (value << 4) + (ch - '0');
-  else if (ch >= 'A' && ch <= 'F')
-    value = (value << 4) + (ch - 'A' + 10);
-  else if (ch >= 'a' && ch <= 'f')
-    value = (value << 4) + (ch - 'a' + 10);
-
-  return value;
-}
-
-///
-/// Given one byte, return two hex characters in buffer
-///
-void itoh (uint8_t * ptr, uint8_t in)
-{
-  const uint8_t lut[16] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', };
-  ptr[0] = lut[in >> 4];
-  ptr[1] = lut[in & 0xf];
-}
-
 /*
  * Memory Layout
  * 0x0003C000 BOOTLOADER_REGION_START
@@ -243,11 +206,11 @@ void serial_rx(uint8_t* data, uint16_t len)
          * byte 0: w
          * byte 1: which page to write to
          * byte 2: which portion to write
-         * byte 3-18: "hexlified" bytes
+         * byte 3-18: 16 bytes
          *
-         * Valid pages to delete: 0x00018000 - 0x0003C000
+         * Valid pages to write: 0x00018000 - 0x0003C000
          * Page Number(s) 96 - 239
-         * Portions: 0-127 (8 bytes)
+         * Portions: 0-63 (16 bytes segments)
          */
         if (len != 19)
         {
@@ -267,7 +230,7 @@ void serial_rx(uint8_t* data, uint16_t len)
           return; /* invalid page */
         }
 
-        if (data[2] >= 128)
+        if (data[2] >= 64)
         {
           {
             const char* test = "! invalid chunk";
@@ -276,18 +239,26 @@ void serial_rx(uint8_t* data, uint16_t len)
           return; /* invalid chunk */
         }
 
-        /* unhexlify it */
-        application_buffer[0] = htoi(&data[3]);
-        application_buffer[1] = htoi(&data[5]);
-        application_buffer[2] = htoi(&data[7]);
-        application_buffer[3] = htoi(&data[9]);
-        application_buffer[4] = htoi(&data[11]);
-        application_buffer[5] = htoi(&data[13]);
-        application_buffer[6] = htoi(&data[15]);
-        application_buffer[7] = htoi(&data[17]);
+        /* ENDIANSSS!!! */
+        application_buffer[3]  = data[3];
+        application_buffer[2]  = data[4];
+        application_buffer[1]  = data[5];
+        application_buffer[0]  = data[6];
+        application_buffer[7]  = data[7];
+        application_buffer[6]  = data[8];
+        application_buffer[5]  = data[9];
+        application_buffer[4]  = data[10];
+        application_buffer[11] = data[11];
+        application_buffer[10] = data[12];
+        application_buffer[9]  = data[13];
+        application_buffer[8]  = data[14];
+        application_buffer[15] = data[15];
+        application_buffer[14] = data[16];
+        application_buffer[13] = data[17];
+        application_buffer[12] = data[18];
 
         /* write it out */
-        uint32_t err = sd_flash_write((uint32_t *)(data[1] * 1024 + data[2] * 8), (const uint32_t *)&application_buffer[0], 2);
+        uint32_t err = sd_flash_write((uint32_t *)(data[1] * 1024 + data[2] * 16), (const uint32_t *)&application_buffer[0], 4);
         check_error(err);   
 
         application_buffer[60] = 'w';
@@ -311,9 +282,9 @@ void serial_rx(uint8_t* data, uint16_t len)
          * byte 1: which page to read
          * byte 2: which portion to read
          *
-         * Valid pages to delete: 0x00018000 - 0x0003C000
+         * Valid pages to read: 0x00018000 - 0x0003C000
          * Page Number(s) 96 - 239
-         * Portions: 0-127 (8 bytes)
+         * Portions: 0-63 (16 bytes)
          */
         if (len != 3)
         {
@@ -342,16 +313,16 @@ void serial_rx(uint8_t* data, uint16_t len)
           return; /* invalid chunk */
         }
 
-        uint8_t * addr = (uint8_t *) ((data[1]*1024) + (data[2]*8));        
-        itoh(&application_buffer[3+(0*2)], *addr); addr++;
-        itoh(&application_buffer[3+(1*2)], *addr); addr++;
-        itoh(&application_buffer[3+(2*2)], *addr); addr++;
-        itoh(&application_buffer[3+(3*2)], *addr); addr++;
-        itoh(&application_buffer[3+(4*2)], *addr); addr++;
-        itoh(&application_buffer[3+(5*2)], *addr); addr++;
-        itoh(&application_buffer[3+(6*2)], *addr); addr++;
-        itoh(&application_buffer[3+(7*2)], *addr);
- 
+        uint8_t * addr = (uint8_t *) ((data[1]*1024) + (data[2]*16));
+        for(uint8_t i = 0; i < 16; i+=4)
+        {
+          /* little endians */
+          application_buffer[3 + i + 0] = *(addr + i + 3);
+          application_buffer[3 + i + 1] = *(addr + i + 2);
+          application_buffer[3 + i + 2] = *(addr + i + 1);
+          application_buffer[3 + i + 3] = *(addr + i + 0);
+        }
+
         application_buffer[0] = 'r';
         application_buffer[1] = data[1];
         application_buffer[2] = data[2];
@@ -361,17 +332,40 @@ void serial_rx(uint8_t* data, uint16_t len)
       }
 
       break;
-    case 'c':
-      /* check sum */
-
-      break;
     case 'i':
       /* get info */
+      {
+        /*
+         * Command format:
+         * byte 0: i
+         *
+         * reads out the DEVICEID and CONFIGID
+         */
 
-      break;
-    case 'y':
-      /* write info */
+        if (len != 1)
+        {
+          {
+            const char* test = "! invalid args";
+            ble_nus_string_send(&m_nus, (uint8_t *)test, strlen(test));
+          }
+          return; /* invalid length */
+        }
 
+        uint8_t * addr = (uint8_t *) 0x1000005c;
+        for(uint8_t i = 0; i < 12; i+=4)
+        {
+          /* little endians */
+          application_buffer[1 + i + 0] = *(addr + i + 3);
+          application_buffer[1 + i + 1] = *(addr + i + 2);
+          application_buffer[1 + i + 2] = *(addr + i + 1);
+          application_buffer[1 + i + 3] = *(addr + i + 0);
+        }
+
+        application_buffer[0] = 'i';
+       
+        uint32_t err = ble_nus_string_send(&m_nus, &application_buffer[0], 12+1);
+        check_error(err);
+      }
       break;
     case 'e':
       /* echo */
