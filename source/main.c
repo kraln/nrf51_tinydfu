@@ -19,7 +19,7 @@
 #include "ble_radio_notification.h"
 #include "pstorage_platform.h"
 
-#define WAIT_TIME 3 /* seconds */
+#define WAIT_TIME 1 /* seconds */
 
 #define APPLICATION_ENTRY 0x00018000 //was: 0x0001B
 #define BOOTLOADER_REGION_START 0x0003C000
@@ -91,13 +91,14 @@ int main(void)
 ///
 bool check_enter_bootloader()
 {  
-  return true; // XXX editing debugger for now
-
   bool should_enter = false;
 
-
-  // TODO: Fast path--check if there is an application. if not, true fast
-
+  // Fast path--check if there is an application. if not, true fast
+  uint8_t * ptr = (uint8_t *)APPLICATION_ENTRY;
+  if(ptr[3] != 0x20) /* stack pointer */
+  {
+    return true;
+  }
 
   uint32_t accumulated_ms = 0;
 
@@ -239,23 +240,22 @@ void serial_rx(uint8_t* data, uint16_t len)
           return; /* invalid chunk */
         }
 
-        /* ENDIANSSS!!! */
-        application_buffer[3]  = data[3];
-        application_buffer[2]  = data[4];
-        application_buffer[1]  = data[5];
-        application_buffer[0]  = data[6];
-        application_buffer[7]  = data[7];
-        application_buffer[6]  = data[8];
-        application_buffer[5]  = data[9];
-        application_buffer[4]  = data[10];
-        application_buffer[11] = data[11];
-        application_buffer[10] = data[12];
-        application_buffer[9]  = data[13];
-        application_buffer[8]  = data[14];
-        application_buffer[15] = data[15];
-        application_buffer[14] = data[16];
-        application_buffer[13] = data[17];
-        application_buffer[12] = data[18];
+        application_buffer[0]  = data[3];
+        application_buffer[1]  = data[4];
+        application_buffer[2]  = data[5];
+        application_buffer[3]  = data[6];
+        application_buffer[4]  = data[7];
+        application_buffer[5]  = data[8];
+        application_buffer[6]  = data[9];
+        application_buffer[7]  = data[10];
+        application_buffer[8]  = data[11];
+        application_buffer[9]  = data[12];
+        application_buffer[10] = data[13];
+        application_buffer[11] = data[14];
+        application_buffer[12] = data[15];
+        application_buffer[13] = data[16];
+        application_buffer[14] = data[17];
+        application_buffer[15] = data[18];
 
         /* write it out */
         uint32_t err = sd_flash_write((uint32_t *)(data[1] * 1024 + data[2] * 16), (const uint32_t *)&application_buffer[0], 4);
@@ -316,11 +316,10 @@ void serial_rx(uint8_t* data, uint16_t len)
         uint8_t * addr = (uint8_t *) ((data[1]*1024) + (data[2]*16));
         for(uint8_t i = 0; i < 16; i+=4)
         {
-          /* little endians */
-          application_buffer[3 + i + 0] = *(addr + i + 3);
-          application_buffer[3 + i + 1] = *(addr + i + 2);
-          application_buffer[3 + i + 2] = *(addr + i + 1);
-          application_buffer[3 + i + 3] = *(addr + i + 0);
+          application_buffer[3 + i + 0] = *(addr + i + 0);
+          application_buffer[3 + i + 1] = *(addr + i + 1);
+          application_buffer[3 + i + 2] = *(addr + i + 2);
+          application_buffer[3 + i + 3] = *(addr + i + 3);
         }
 
         application_buffer[0] = 'r';
